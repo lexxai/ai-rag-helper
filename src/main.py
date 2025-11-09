@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
-from os import environ
 
-from fastapi import FastAPI, Depends, Body
+from fastapi import FastAPI
 from redis.asyncio import Redis
 
 from logger_config import setup_root_logger, get_logger
 from settings import settings
+from routers import cache
 
 # Setup root logger for the application
 setup_root_logger(level=settings.log_level)
@@ -44,33 +44,5 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-async def get_redis_session():
-    yield app.state.redis  # noqa
-
-
-@app.post("/cache-set")
-async def cache_set(
-    key: str = Body(...),
-    value: str = Body(...),
-    redis: Redis | None = Depends(get_redis_session),
-):
-    if redis is None:
-        logger.warning("Redis not available — skipping cache_set")
-        return {"status": "skipped", "reason": "redis unavailable"}
-
-    await redis.set(key, value)
-    return {"status": "ok", "key": key, "value": value}
-
-
-@app.get("/cache-get")
-async def cache_get(
-    key: str,
-    redis: Redis | None = Depends(get_redis_session),
-):
-    if redis is None:
-        logger.warning("Redis not available — skipping cache_get")
-        return {"status": "skipped", "reason": "redis unavailable"}
-
-    value = await redis.get(key)
-    return {"key": key, "value": value.decode() if value else None}
+# Include routers with api_prefix from settings
+app.include_router(cache.router, prefix=settings.api_prefix)
