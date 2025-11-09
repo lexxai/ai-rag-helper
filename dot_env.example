@@ -1,0 +1,16 @@
+# Redis Configuration
+# REDIS_URL=redis://redis:6379/0
+# REDIS_MAX_CONNECTIONS=10
+
+# Logging Configuration
+# LOG_LEVEL=INFO
+# LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s
+
+# Application Configuration
+# APP_NAME=AI RAG Helper
+# APP_VERSION=0.0.1
+# DEBUG=false
+
+# API Configuration
+# API_PREFIX=/api/v1
+# CORS_ORIGINS=["*"]
