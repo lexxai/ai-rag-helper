@@ -1,7 +1,10 @@
-ARG PYTHON_VER=3.14
+# docker compose build --build-arg REPO_BUILDER=rocm/pytorch:latest
+# docker compose build --build-arg EXTRA=cu128
+
+ARG PYTHON_VER=${PYTHON_VERSION-3.14}
 ARG PYTHON_BUILDER=python:${PYTHON_VER}
 ARG PYTHON_APP=${PYTHON_BUILDER}-slim
-ARG REPO_BUILDER=${REPO-$PYTHON_BUILDER}
+ARG REPO_BUILDER=${REPO_BUILDER-$PYTHON_BUILDER}
 ARG REPO=${REPO_BUILDER-$PYTHON_APP}
 ARG EXTRA=${EXTRA-cpu}
 
@@ -22,7 +25,7 @@ WORKDIR /app
 # Install dependencies
 COPY "pyproject.toml" "uv.lock" .
 #--locked
-RUN uv sync --locked --no-group dev  --all-groups --extra ${EXTRA-cpu}
+RUN uv sync --locked --no-group dev  --all-groups --extra ${EXTRA}
 
 FROM ${REPO}
 

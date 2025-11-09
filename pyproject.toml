@@ -28,13 +28,21 @@ cpu = [
 cu128 = [
     "torch>=2.9.0",
 ]
+rocm = [
+    "pytorch-triton-rocm>=3.3.0",
+    "torch>=2.9.0",
+]
+docker = [
+    # No torch dependencies - use system-installed PyTorch from Docker image
+]
 
 [tool.uv]
 conflicts = [
   [
     { extra = "cpu" },
     { extra = "cu128" },
-#    { extra = "torch-rocm" },
+    { extra = "rocm" },
+    { extra = "docker" },
   ],
 ]
 
@@ -43,7 +51,10 @@ conflicts = [
 torch = [
   { index = "pytorch-cpu", extra = "cpu" },
   { index = "pytorch-cu128", extra = "cu128" },
-#  { index = "pytorch-rocm", extra = "rocm" },
+  { index = "pytorch-rocm", extra = "rocm" },
+]
+pytorch-triton-rocm = [
+  { index = "pytorch-rocm", extra = "rocm" },
 ]
 
 
@@ -55,6 +66,11 @@ explicit = true
 [[tool.uv.index]]
 name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-rocm"
+url = "https://download.pytorch.org/whl/rocm6.4"
 explicit = true
 
 
