@@ -1,12 +1,11 @@
 import logging
 import sys
-from typing import Optional
 
 
 def configure_logger(
-    name: Optional[str] = None,
+    name: str | None = None,
     level: str = "INFO",
-    log_format: Optional[str] = None,
+    log_format: str | None = None,
     include_timestamp: bool = True,
 ) -> logging.Logger:
     """
@@ -42,8 +41,7 @@ def configure_logger(
             )
         else:
             log_format = (
-                "%(name)s - %(levelname)s - "
-                "%(filename)s:%(lineno)d - %(message)s"
+                "%(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
             )
 
     formatter = logging.Formatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
@@ -54,10 +52,7 @@ def configure_logger(
     return logger
 
 
-def setup_root_logger(
-    level: str = "INFO",
-    log_format: Optional[str] = None
-) -> None:
+def setup_root_logger(level: str = "INFO", log_format: str | None = None) -> None:
     """
     Setup the root logger for the entire application.
 
@@ -75,11 +70,11 @@ def setup_root_logger(
         level=getattr(logging, level.upper()),
         format=log_format,
         datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)]
+        handlers=[logging.StreamHandler(sys.stdout)],
     )
 
 
-def get_logger(name: str, level: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str, level: str | None = None) -> logging.Logger:
     """
     Get a logger instance with optional custom level.
 
