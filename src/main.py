@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
     if redis_client is not None:
         await redis_client.close()
         await redis_client.connection_pool.disconnect()
-        logger.error("Redis disconnected")
+        logger.debug("Redis disconnected")
 
 
 app = FastAPI(

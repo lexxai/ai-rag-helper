@@ -1,4 +1,4 @@
-# docker compose build backend && docker compose up --build -d && docker compose logs -f backend
+# docker compose -f docker-compose.rocm.yaml build backend && docker compose up --build -d && docker compose logs -f backend
 
 name: ai-rag-helper
 services:
@@ -17,8 +17,8 @@ services:
       args:
         PYTHON_VERSION: ${PYTHON_VERSION:-3.14}
         PYTHON_APP: ${PYTHON_APP:-}
-        REPO_BUILDER: ${REPO_BUILDER:-}
-        EXTRA: ${EXTRA:-cpu}
+        REPO_BUILDER: ${REPO_BUILDER:-rocm/pytorch:latest}
+        EXTRA: ${EXTRA:-docker}
         UV_PYTHON: ${UV_PYTHON:-}
         APP_PORT: ${APP_PORT:-8000}
     volumes:
@@ -32,11 +32,11 @@ services:
       - redis
     env_file:
       - .env
-#    devices:
-#      - /dev/kfd
-#      - /dev/dri
-#    security_opt:
-#      - seccomp=./dockers/rocm-seccomp.json
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    security_opt:
+      - seccomp=./dockers/rocm-seccomp.json
 
 
 volumes:

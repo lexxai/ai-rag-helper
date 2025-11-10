@@ -1,0 +1,39 @@
+{
+  "defaultAction": "SCMP_ACT_ERRNO",
+  "archMap": [
+    {
+      "architecture": "SCMP_ARCH_X86_64",
+      "subArchitectures": [ "SCMP_ARCH_X86", "SCMP_ARCH_X32" ]
+    }
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "read", "write", "close", "fstat", "lseek", "mmap", "mprotect", "munmap",
+        "brk", "rt_sigaction", "rt_sigprocmask", "rt_sigreturn",
+        "clone", "clone3", "set_tid_address", "set_robust_list", "gettid",
+        "futex", "sched_yield", "nanosleep", "clock_gettime",
+        "open", "openat", "readlink", "stat", "statx", "lstat", "access",
+        "pipe", "pipe2", "dup", "dup2", "dup3",
+        "socket", "connect", "accept", "accept4", "sendto", "recvfrom",
+        "sendmsg", "recvmsg", "shutdown", "bind", "getsockname", "getpeername",
+        "poll", "ppoll", "select", "pselect6",
+        "getpid", "getppid", "getuid", "geteuid", "getgid", "getegid",
+        "prctl", "uname",
+        "ioctl", "eventfd2", "epoll_create1", "epoll_ctl", "epoll_wait",
+        "madvise", "mlock", "mlock2", "munlock", "mremap",
+        "getrandom", "statfs", "fstatfs",
+        "chdir", "getcwd", "mkdir", "rmdir", "unlink", "rename",
+        "tgkill", "wait4", "exit", "exit_group",
+        "setpriority", "getpriority", "sched_getaffinity", "sched_setaffinity",
+        "ftruncate", "fsync", "fdatasync", "pread64", "pwrite64",
+        "writev", "readv",
+        "memfd_create", "fadvise64", "fallocate",
+        "getrusage", "times", "sysinfo",
+        "statfs64", "uname",
+        "capget", "capset"
+      ],
+      "action": "SCMP_ACT_ALLOW"
+    }
+  ]
+}
