@@ -19,7 +19,6 @@ class Settings(BaseSettings):
 
     # Redis Configuration
     redis_url: str = "redis://redis:6379/0"
-    redis_max_connections: int = 10
 
     # Logging Configuration
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
@@ -41,7 +40,7 @@ class Settings(BaseSettings):
     prometheus_loop_delay: int = 15
 
     pre_import_on_boot: bool = True
-    approved_models_config_path: Path = Path("models.yaml")
+    approved_models_config_path: Path = Path(".models.yaml")
     model_cache_folder: Path = Path("models")
 
     huggingface_api_key: str = None
