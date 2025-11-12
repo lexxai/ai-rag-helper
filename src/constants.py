@@ -11,4 +11,9 @@ class GpuDevice(StrEnum):
     CPU = "cpu"
 
 
+class GpuToolSMI(StrEnum):
+    NVIDIA = "nvidia-smi"
+    ROCM = "rocm-smi"
+
+
 APPROVED_MODELS = {"hf": ["sentence-transformers/paraphrase-multilingual-mpnet-base-v2"]}

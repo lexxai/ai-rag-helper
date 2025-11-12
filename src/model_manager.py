@@ -8,7 +8,7 @@ from functools import lru_cache
 
 from prometheus_client import Gauge
 
-from constants import GpuTool, GpuDevice, APPROVED_MODELS
+from constants import GpuTool, GpuDevice, APPROVED_MODELS, GpuToolSMI
 from settings import settings
 
 
@@ -44,10 +44,10 @@ def detect_gpu_tool() -> str | None:
     """Detect GPU platform once."""
     if hasattr(detect_gpu_tool, "_cached"):
         return detect_gpu_tool._cached  # noqa
-    if shutil.which("nvidia-smi"):
-        detect_gpu_tool._cached = GpuTool.NVIDIA
-    elif shutil.which("rocm-smi"):
+    if shutil.which(GpuToolSMI.ROCM):
         detect_gpu_tool._cached = GpuTool.ROCM
+    elif shutil.which(GpuToolSMI.NVIDIA):
+        detect_gpu_tool._cached = GpuTool.NVIDIA
     else:
         detect_gpu_tool._cached = None
     return detect_gpu_tool._cached  # noqa
