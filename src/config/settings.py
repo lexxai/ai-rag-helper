@@ -39,11 +39,11 @@ class Settings(BaseSettings):
     gpu_monitor_loop_delay: int = 5
     prometheus_loop_delay: int = 15
 
-    pre_import_on_boot: bool = True
+    pre_import_on_boot: bool = False  # For preload pytorch module on boot
     approved_models_config_path: Path = Path(".models.yaml")
     model_cache_folder: Path = Path("models")
 
-    huggingface_api_key: str = None
+    huggingface_api_key: str | None = None
 
     def __init__(self):
         super().__init__()

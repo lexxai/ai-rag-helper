@@ -3,6 +3,18 @@ from contextlib import asynccontextmanager
 import redis.asyncio as redis
 from fastapi import FastAPI
 
+try:
+    import orjson
+    from fastapi.responses import ORJSONResponse  # noqa
+
+    RESPONSE_CLASS = ORJSONResponse
+
+except ImportError:
+    import json
+    from fastapi.responses import JSONResponse
+
+    RESPONSE_CLASS = JSONResponse
+
 from logger_config import setup_root_logger, get_logger
 from model_manager import ModelManager
 from routers import cache, models
@@ -55,6 +67,7 @@ app = FastAPI(
     version=settings.app_version,
     debug=settings.debug,
     lifespan=lifespan,
+    default_response_class=RESPONSE_CLASS,
 )
 
 # Include routers with api_prefix from settings
