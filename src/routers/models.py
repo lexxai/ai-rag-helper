@@ -11,13 +11,24 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/models", tags=["Models"])
 
 
-@router.post("/load", response_model=ModelLoadResponse)
-async def load_model(model_name: str = Body(..., embed=True), manager: ModelManager = Depends(get_model_manager)):
-    await handler_load_model(model_name, manager)
-    return {"status": "ok", "message": f"Loaded {model_name}"}
+# @router.post("/load")
+# async def load_model(
+#     model_name: str = Body(..., embed=True), manager: ModelManager = Depends(get_model_manager)
+# ) -> dict:
+#     await handler_load_model(model_name, manager)
+#     return {"status": "ok", "message": f"Loaded {model_name}"}
 
 
-@router.post("/unload", response_model=ModelLoadResponse)
-async def unload_model(model_name: str = Body(..., embed=True), manager: ModelManager = Depends(get_model_manager)):
-    await handler_unload_model(model_name, manager)
-    return {"status": "ok", "message": f"Unloaded {model_name}"}
+@router.post("/load")
+async def load_model(
+    model_name: str = Body(..., embed=True),
+) -> ModelLoadResponse:
+    # await handler_load_model(model_name)
+    return ModelLoadResponse(status="ok", message=f"Loaded {model_name}")
+
+
+#
+# @router.post("/unload")
+# async def unload_model(model_name: str = Body(..., embed=True), manager: ModelManager = Depends(get_model_manager)) -> ModelLoadResponse:
+#     await handler_unload_model(model_name, manager)
+#     return ModelLoadResponse(status="ok", message=f"Unloaded {model_name}")
