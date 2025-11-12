@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 
+import redis.asyncio as redis
 from fastapi import FastAPI
-from redis.asyncio import Redis
 
 from logger_config import setup_root_logger, get_logger
+from model_manager import ModelManager
+from routers import cache, models
 from settings import settings
-from routers import cache
 
 # Setup root logger for the application
 setup_root_logger(level=settings.log_level)
@@ -20,7 +21,7 @@ async def lifespan(app: FastAPI):
     redis_url = settings.redis_url
 
     try:
-        redis_client = Redis.from_url(redis_url)
+        redis_client = redis.from_url(redis_url)
         await redis_client.ping()
         logger.debug("Connected to Redis")
     except Exception as e:
@@ -29,12 +30,23 @@ async def lifespan(app: FastAPI):
 
     # Store in app state
     app.state.redis = redis_client  # noqa
+    try:
+        manager = ModelManager(timeout=settings.model_manager_timeout, check_gpu=settings.model_manager_check_gpu)
+        app.state.manager = manager  # noqa
+    except Exception as e:
+        logger.error(f"ModelManager Creating failed: {e}")
+        raise
+
     yield
     # Cleanup
     if redis_client is not None:
         await redis_client.close()
         await redis_client.connection_pool.disconnect()
         logger.debug("Redis disconnected")
+
+    if manager is not None:
+        await manager.close()
+        logger.debug("Model Manager closed")
 
 
 app = FastAPI(
@@ -46,3 +58,5 @@ app = FastAPI(
 
 # Include routers with api_prefix from settings
 app.include_router(cache.router, prefix=settings.api_prefix)
+app.include_router(models.router, prefix=settings.api_prefix)
+# app.include_router(ws.router_ws, prefix=settings.api_prefix)
