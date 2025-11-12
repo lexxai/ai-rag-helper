@@ -1,0 +1,45 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from redis import asyncio as redis
+
+from config.settings import settings
+from logger_config import get_logger
+from model_manager import ModelManager
+
+logger = get_logger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context to initialize Redis"""
+    redis_url = settings.redis_url
+
+    try:
+        redis_client = redis.from_url(redis_url)
+        await redis_client.ping()
+        logger.debug("Connected to Redis")
+    except Exception as e:
+        logger.error(f"Redis connection failed: {e}")
+        redis_client = None
+
+    # Store in app state
+    app.state.redis = redis_client  # noqa
+    try:
+        manager = ModelManager(timeout=settings.model_manager_timeout)
+        app.state.manager = manager  # noqa
+    except Exception as e:
+        logger.error(f"ModelManager Creating failed: {e}")
+        raise
+
+    yield
+
+    # Cleanup
+    if manager is not None:
+        await manager.close()
+        logger.debug("Model Manager closed")
+
+    if redis_client is not None:
+        await redis_client.close()
+        await redis_client.connection_pool.disconnect()
+        logger.debug("Redis disconnected")

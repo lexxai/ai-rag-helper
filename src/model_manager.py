@@ -7,7 +7,7 @@ from functools import lru_cache
 
 from prometheus_client import Gauge
 
-from constants import GpuTool, GpuDevice, APPROVED_MODELS
+from constants import GpuTool, GpuDevice, APPROVED_MODELS, GpuToolSMI
 from events import EventBus
 from config.settings import settings
 
@@ -186,7 +186,7 @@ class ModelManager:
         await self.bus.publish({"action": "model manager closed"})
 
     async def _cleanup_loop(self, timeout: int):
-        logger.debug(f"Cleanup monitor is starting [{timeout}s] ...")
+        logger.info(f"Cleanup monitor is starting [{timeout}s] ...")
         while not self._shutdown_event.is_set():
             await asyncio.sleep(timeout)
             now = time.time()
@@ -196,10 +196,10 @@ class ModelManager:
                     if (now - m.last_used) > self.timeout:
                         logger.info(f"Cleanup unloading the model '{model_name}' by timeout inactivity.")
                         await self.unload_model(model_name)
-        logger.debug("Cleanup monitor finished")
+        logger.info("Cleanup monitor finished")
 
     async def _gpu_monitor_loop(self, gpu_monitor_loop_delay: int):
-        logger.debug(f"GPU monitor is starting [{gpu_monitor_loop_delay}s] ...")
+        logger.info(f"GPU monitor is starting [{gpu_monitor_loop_delay}s] ...")
         while not self._shutdown_event.is_set():
             await asyncio.sleep(gpu_monitor_loop_delay)
             async with self.lock:
@@ -207,7 +207,7 @@ class ModelManager:
                     try:
                         output = subprocess.check_output(
                             [
-                                "nvidia-smi",
+                                str(GpuToolSMI.NVIDIA),
                                 "--query-gpu=memory.used",
                                 "--format=csv,noheader,nounits",
                             ],
@@ -220,7 +220,7 @@ class ModelManager:
                         logger.error(f"NVIDIA GPU monitor failed: {e}")
                 elif self.gpu_tool is not None and self.gpu_tool == GpuTool.ROCM:
                     try:
-                        output = subprocess.check_output(["rocm-smi", "--showuse", "--json"], text=True)
+                        output = subprocess.check_output([str(GpuToolSMI.ROCM), "--showuse", "--json"], text=True)
                         import json
 
                         rocm_data = json.loads(output)
@@ -235,10 +235,10 @@ class ModelManager:
                     logger.debug("GPU monitor value of 'gpu_tool' is unsupported, break")
                     break
 
-        logger.debug("GPU monitor finished")
+        logger.info("GPU monitor finished")
 
     async def _prometheus_loop(self, prometheus_loop_delay: int):
-        logger.debug(f"Prometheus monitor is starting [{prometheus_loop_delay}s] ...")
+        logger.info(f"Prometheus monitor is starting [{prometheus_loop_delay}s] ...")
         while not self._shutdown_event.is_set():
             await asyncio.sleep(prometheus_loop_delay)
             async with self.lock:
@@ -249,4 +249,4 @@ class ModelManager:
                     self.model_infer_gauge.labels(model=name).set(m.last_infer_time)
                     total_gpu += m.gpu_mem_gb
                 self.total_gpu_gauge.set(total_gpu)
-        logger.debug("Prometheus monitor finished")
+        logger.info("Prometheus monitor finished")

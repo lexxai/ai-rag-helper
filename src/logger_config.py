@@ -80,7 +80,7 @@ def get_logger(name: str, level: str | None = None) -> logging.Logger:
     Returns:
         Logger instance
     """
-    logger = logging.getLogger("RAG:" + name)
+    logger = logging.getLogger(name)
     if level:
         logger.setLevel(getattr(logging, level.upper()))
     return logger
