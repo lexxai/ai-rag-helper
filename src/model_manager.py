@@ -1,18 +1,20 @@
 import asyncio
 import gc
-import time
 import shutil
 import subprocess
-from sentence_transformers import SentenceTransformer
-from typing import Optional
+import time
+from asyncio import Task
+
 from prometheus_client import Gauge
+from sentence_transformers import SentenceTransformer
+
+from constants import GpuTool, GpuDevice
+from settings import settings
 
 try:
     import torch
 except ImportError:
-    raise "Install torch dependecy package"
-from contextlib import asynccontextmanager
-from redis.asyncio import Redis
+    raise "Install torch dependency package"
 
 from logger_config import get_logger
 
@@ -42,17 +44,17 @@ class EventBus:
 
 
 # Singleton GPU detection
-def detect_gpu_tool() -> Optional[str]:
+def detect_gpu_tool() -> str | None:
     """Detect GPU platform once."""
     if hasattr(detect_gpu_tool, "_cached"):
-        return detect_gpu_tool._cached
+        return detect_gpu_tool._cached  # noqa
     if shutil.which("nvidia-smi"):
-        detect_gpu_tool._cached = "nvidia"
+        detect_gpu_tool._cached = GpuTool.NVIDIA
     elif shutil.which("rocm-smi"):
-        detect_gpu_tool._cached = "rocm"
+        detect_gpu_tool._cached = GpuTool.ROCM
     else:
         detect_gpu_tool._cached = None
-    return detect_gpu_tool._cached
+    return detect_gpu_tool._cached  # noqa
 
 
 class ModelInstance:
@@ -62,7 +64,7 @@ class ModelInstance:
         self.last_used = time.time()
         self.last_infer_time = 0.0
         self.lock = asyncio.Lock()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
         self.gpu_mem_gb = 0.0
 
     async def infer(self, func, *args, **kwargs):
@@ -79,9 +81,9 @@ class ModelInstance:
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            print(f"✅ Unloaded model {self.model_name}")
+            logger.debug(f"Unloaded model {self.model_name}")
         except Exception as e:
-            print(f"⚠️ Error unloading {self.model_name}: {e}")
+            logger.error(f"Error unloading {self.model_name}: {e}")
 
 
 class ModelManager:
@@ -93,29 +95,22 @@ class ModelManager:
         self.check_gpu = check_gpu
         self.gpu_tool = detect_gpu_tool()
 
-        # Prometheus metrics
-        self.model_count_gauge = Gauge(
-            "loaded_models_total", "Number of currently loaded models"
-        )
-        self.model_gpu_gauge = Gauge(
-            "model_gpu_usage_gb", "Per-model GPU memory usage in GB", ["model"]
-        )
-        self.model_infer_gauge = Gauge(
-            "model_last_infer_seconds", "Last inference duration per model", ["model"]
-        )
-        self.total_gpu_gauge = Gauge(
-            "gpu_total_usage_gb", "Total GPU memory usage in GB"
-        )
+        # Prometheus metrics.py
+        self.model_count_gauge = Gauge("loaded_models_total", "Number of currently loaded models")
+        self.model_gpu_gauge = Gauge("model_gpu_usage_gb", "Per-model GPU memory usage in GB", ["model"])
+        self.model_infer_gauge = Gauge("model_last_infer_seconds", "Last inference duration per model", ["model"])
+        self.total_gpu_gauge = Gauge("gpu_total_usage_gb", "Total GPU memory usage in GB")
 
-        asyncio.create_task(self._cleanup_loop())
+        # Background tasks
+        self.tasks: dict[str, Task] = {"cleanup_loop": asyncio.create_task(self._cleanup_loop())}
         if self.check_gpu:
-            asyncio.create_task(self._gpu_monitor_loop())
-        asyncio.create_task(self._prometheus_loop())
+            self.tasks["gpu_monitor_loop"] = asyncio.create_task(self._gpu_monitor_loop())
+        self.tasks["prometheus_loop"] = asyncio.create_task(self._prometheus_loop())
 
     async def get_model(self, model_name: str) -> ModelInstance:
         async with self.lock:
             if model_name not in self.models:
-                print(f"🚀 Loading model {model_name}")
+                logger.debug(f"Loading model {model_name}")
                 self.models[model_name] = ModelInstance(model_name)
                 await self.bus.publish({"action": "loaded", "model": model_name})
             else:
@@ -143,6 +138,22 @@ class ModelManager:
             )
         return data
 
+    async def close(self):
+        async with self.lock:
+            for name in self.models.keys():
+                await self.unload_model(name)
+        for task_name, task in self.tasks.items():
+            try:
+                task.cancel()
+                await task
+                logger.debug(f"cancelled task: {task_name}")
+            except asyncio.CancelledError:
+                ...  # Expected cancellation
+            except Exception as e:
+                logger.error(f"Error cancelling task {task_name}: {e}")
+
+        await self.bus.publish({"action": "model manager closed"})
+
     async def _cleanup_loop(self):
         while True:
             await asyncio.sleep(60)
@@ -155,9 +166,9 @@ class ModelManager:
 
     async def _gpu_monitor_loop(self):
         while True:
-            await asyncio.sleep(5)
+            await asyncio.sleep(settings.gpu_monitor_loop_delay)
             async with self.lock:
-                if self.gpu_tool == "nvidia":
+                if self.gpu_tool == GpuTool.NVIDIA:
                     try:
                         output = subprocess.check_output(
                             [
@@ -171,29 +182,25 @@ class ModelManager:
                         for m in self.models.values():
                             m.gpu_mem_gb = used / max(1, len(self.models))
                     except Exception as e:
-                        print(f"⚠️ NVIDIA GPU monitor failed: {e}")
-                elif self.gpu_tool == "rocm":
+                        logger.error(f"NVIDIA GPU monitor failed: {e}")
+                elif self.gpu_tool == GpuTool.ROCM:
                     try:
-                        output = subprocess.check_output(
-                            ["rocm-smi", "--showuse", "--json"], text=True
-                        )
+                        output = subprocess.check_output(["rocm-smi", "--showuse", "--json"], text=True)
                         import json
 
                         rocm_data = json.loads(output)
-                        total_mem = (
-                            sum(int(gpu["VRAMUse"]) for gpu in rocm_data["card"]) / 1024
-                        )
+                        total_mem = sum(int(gpu["VRAMUse"]) for gpu in rocm_data["card"]) / 1024
                         for m in self.models.values():
                             m.gpu_mem_gb = total_mem / max(1, len(self.models))
                     except Exception as e:
-                        print(f"⚠️ ROCm GPU monitor failed: {e}")
+                        logger.error(f"ROCm GPU monitor failed: {e}")
                 else:
                     for m in self.models.values():
                         m.gpu_mem_gb = 0.0
 
     async def _prometheus_loop(self):
         while True:
-            await asyncio.sleep(5)
+            await asyncio.sleep(settings.prometheus_loop_delay)
             async with self.lock:
                 self.model_count_gauge.set(len(self.models))
                 total_gpu = 0.0
