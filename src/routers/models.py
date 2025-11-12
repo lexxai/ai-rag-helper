@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Body
+from fastapi import APIRouter, Depends, Body, HTTPException
+from starlette import status
 
 from depends import get_model_manager
 from handlers.models import handler_load_model, handler_unload_model, handler_list_loaded_models, handler_list_available
@@ -18,7 +19,7 @@ async def load_model(
     model_instance = await handler_load_model(model_name, manager)
     if model_instance is not None:
         return ModelLoadResponse(status="ok", message=f"Loaded {model_name}")
-    return ModelLoadResponse(status="error", message=f"Not loaded {model_name}")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to load model {model_name}")
 
 
 #
@@ -29,16 +30,16 @@ async def unload_model(
     result = await handler_unload_model(model_name, manager)
     if result:
         return ModelLoadResponse(status="ok", message=f"Unloaded {model_name}")
-    return ModelLoadResponse(status="error", message=f"Not unloaded {model_name}")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to unload model {model_name}")
 
 
 @router.post("/loaded")
-async def unload_model(manager: ModelManager = Depends(get_model_manager)) -> list[ModelListItems]:
+async def list_loaded_models(manager: ModelManager = Depends(get_model_manager)) -> list[ModelListItems]:
     result = await handler_list_loaded_models(manager)
     return result
 
 
 @router.post("/available")
-async def unload_model(manager: ModelManager = Depends(get_model_manager)) -> list[str]:
+async def list_available_models(manager: ModelManager = Depends(get_model_manager)) -> list[str]:
     result = await handler_list_available(manager)
     return result
