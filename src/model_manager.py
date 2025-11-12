@@ -7,7 +7,8 @@ from functools import lru_cache
 
 from prometheus_client import Gauge
 
-from constants import GpuTool, GpuDevice, APPROVED_MODELS, GpuToolSMI
+from constants import GpuTool, GpuDevice, GpuToolSMI
+from config.models_list_config import APPROVED_MODELS
 from events import EventBus
 from config.settings import settings
 
@@ -193,7 +194,7 @@ class ModelManager:
             async with self.lock:
                 for model_name in list(self.models.keys()):
                     m = self.models[model_name]
-                    if (now - m.last_used) > self.timeout:
+                    if (now - m.last_used) > timeout:
                         logger.info(f"Cleanup unloading the model '{model_name}' by timeout inactivity.")
                         await self.unload_model(model_name)
         logger.info("Cleanup monitor finished")

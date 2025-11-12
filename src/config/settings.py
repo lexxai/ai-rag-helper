@@ -61,6 +61,8 @@ class Settings(BaseSettings):
 
     huggingface_api_key: str | None = None
 
+    default_model_names: dict[str, str] = {}
+
     def __init__(self):
         super().__init__()
         cache_path = (BASE_PATH.parent / "data" / self.model_cache_folder).resolve()
