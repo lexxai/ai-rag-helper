@@ -40,7 +40,11 @@ class Settings(BaseSettings):
     gpu_monitor_loop_delay: int = 5
     prometheus_loop_delay: int = 15
 
+    pre_import_on_boot: bool = True
+    approved_models_config_path: Path = Path("models.yaml")
     model_cache_folder: Path = Path("models")
+
+    huggingface_api_key: str = None
 
     def __init__(self):
         super().__init__()
@@ -49,6 +53,10 @@ class Settings(BaseSettings):
             raise ValueError("Model cache folder must be within the base directory")
         self.model_cache_folder = cache_path
         self.model_cache_folder.mkdir(exist_ok=True, parents=True)
+        approved_models_config_path = (BASE_PATH / self.approved_models_config_path).resolve()
+        if not approved_models_config_path.is_relative_to(BASE_PATH):
+            raise ValueError("Model approved_models_config_path folder must be within the base directory")
+        self.approved_models_config_path = approved_models_config_path
 
 
 # Singleton instance
