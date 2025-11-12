@@ -50,13 +50,13 @@ class ModelInstance:
             device = self.device
             from sentence_transformers import SentenceTransformer
 
-            api_key = getattr(settings, "huggingface_api_key", None)
+            hf_token = getattr(settings, "hf_token", None)
 
             self.model = SentenceTransformer(
                 self.model_name,
                 cache_folder=settings.model_cache_folder,
                 device=device,
-                token=api_key,
+                token=hf_token,
                 local_files_only=settings.model_cache_only_local,
             )
 

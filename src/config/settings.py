@@ -1,7 +1,13 @@
+try:
+    import orjson as json
+
+except ImportError:
+    import json
+
 from pathlib import Path
 from typing import Literal, Annotated, Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_PATH = Path(__file__).parent.parent
@@ -59,9 +65,24 @@ class Settings(BaseSettings):
     model_cache_folder: Path = Path("models")
     model_cache_only_local: bool = False
 
-    huggingface_api_key: str | None = None
+    hf_token: str | None = None
 
-    default_model_names: dict[str, str] = {}
+    default_model_names: dict[str, str] = {
+        "embed": "sentence-transformers/all-MiniLM-L6-v2",
+        "rerank": "sentence-transformers/all-MiniLM-L6-v2",
+    }
+
+    @field_validator("default_model_names", mode="before")
+    @classmethod
+    def parse(cls, v):
+        if not v:
+            return {"embed": "all-MiniLM-L6-v2", "rerank": "all-MiniLM-L6-v2"}
+        if isinstance(v, dict):
+            return v
+        try:
+            return json.loads(v)
+        except:
+            return {"embed": "all-MiniLM-L6-v2"}
 
     def __init__(self):
         super().__init__()
@@ -74,6 +95,7 @@ class Settings(BaseSettings):
         if not approved_models_config_path.is_relative_to(BASE_PATH):
             raise ValueError("Model approved_models_config_path folder must be within the base directory")
         self.approved_models_config_path = approved_models_config_path
+        print(self.default_model_names)
 
 
 # Singleton instance
