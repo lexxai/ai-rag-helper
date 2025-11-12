@@ -1,5 +1,7 @@
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Annotated, Optional
+
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_PATH = Path(__file__).parent.parent
@@ -14,7 +16,8 @@ class Settings(BaseSettings):
         env_file=BASE_PATH.parent / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore",
+        extra="allow",
+        arbitrary_types_allowed=True,
     )
 
     # Redis Configuration
@@ -34,9 +37,22 @@ class Settings(BaseSettings):
     cors_origins: list[str] = ["*"]
     api_access_key: str | None = None
 
-    model_manager_timeout: int = 600  # delay in seconds for check inactivity models
-    gpu_monitor_loop_delay: int = 5  # delay in seconds to check gpu usage
-    prometheus_loop_delay: int = 15  # delay in seconds to check prometheus metrics
+    # These settings accept either None or positive integers from environment variables
+    model_manager_timeout: int = Field(
+        default=600,
+        description="Delay in seconds to check inactive models. Use 0 to disable.",
+        ge=0,
+    )
+    gpu_monitor_loop_delay: int = Field(
+        default=5,
+        description="Delay in seconds to gpu monitoring. Use 0 to disable.",
+        ge=0,
+    )
+    prometheus_loop_delay: int = Field(
+        default=15,
+        description="Delay in seconds to prometheus monitoring. Use 0 to disable.",
+        ge=0,
+    )
 
     pre_import_on_boot: bool = False  # For preload pytorch module on boot
     approved_models_config_path: Path = Path("config/.models.yaml")
