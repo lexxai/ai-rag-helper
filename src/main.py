@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import redis.asyncio as redis
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 try:
     import orjson
@@ -43,7 +44,7 @@ async def lifespan(app: FastAPI):
     # Store in app state
     app.state.redis = redis_client  # noqa
     try:
-        manager = ModelManager(timeout=settings.model_manager_timeout, check_gpu=settings.model_manager_check_gpu)
+        manager = ModelManager(timeout=settings.model_manager_timeout)
         app.state.manager = manager  # noqa
     except Exception as e:
         logger.error(f"ModelManager Creating failed: {e}")
@@ -68,6 +69,15 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan,
     default_response_class=RESPONSE_CLASS,
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Include routers with api_prefix from settings
