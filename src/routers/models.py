@@ -21,8 +21,9 @@ router = APIRouter(prefix="/models", tags=["Models"])
 
 @router.post("/load")
 async def load_model(
-    model_name: str = Body(..., embed=True),
+    model_name: str = Body(..., embed=True), manager: ModelManager = Depends(get_model_manager)
 ) -> ModelLoadResponse:
+    logger.info(f"load_model {manager=}")
     # await handler_load_model(model_name)
     return ModelLoadResponse(status="ok", message=f"Loaded {model_name}")
 

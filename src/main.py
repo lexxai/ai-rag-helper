@@ -38,15 +38,16 @@ async def lifespan(app: FastAPI):
         raise
 
     yield
+
     # Cleanup
+    if manager is not None:
+        await manager.close()
+        logger.debug("Model Manager closed")
+
     if redis_client is not None:
         await redis_client.close()
         await redis_client.connection_pool.disconnect()
         logger.debug("Redis disconnected")
-
-    if manager is not None:
-        await manager.close()
-        logger.debug("Model Manager closed")
 
 
 app = FastAPI(

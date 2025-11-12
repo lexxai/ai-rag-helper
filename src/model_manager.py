@@ -87,9 +87,9 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self, timeout: int = 600, check_gpu: bool = True):
+    def __init__(self, timeout: int = None, check_gpu: bool = True):
         self.models: dict[str, ModelInstance] = {}
-        self.timeout = timeout
+        self.timeout = timeout or settings.model_manager_timeout
         self.lock = asyncio.Lock()
         self.bus = EventBus()
         self.check_gpu = check_gpu
@@ -106,6 +106,9 @@ class ModelManager:
         if self.check_gpu:
             self.tasks["gpu_monitor_loop"] = asyncio.create_task(self._gpu_monitor_loop())
         self.tasks["prometheus_loop"] = asyncio.create_task(self._prometheus_loop())
+        self._shutdown_event = asyncio.Event()
+
+        # logger.debug(f"{self.gpu_tool=}")
 
     async def get_model(self, model_name: str) -> ModelInstance:
         async with self.lock:
@@ -139,36 +142,44 @@ class ModelManager:
         return data
 
     async def close(self):
-        async with self.lock:
-            for name in self.models.keys():
-                await self.unload_model(name)
+        # Signal shutdown to all loops
+        self._shutdown_event.set()
+
+        # Cancel all background tasks
         for task_name, task in self.tasks.items():
-            try:
+            if not task.done():
                 task.cancel()
-                await task
-                logger.debug(f"cancelled task: {task_name}")
-            except asyncio.CancelledError:
-                ...  # Expected cancellation
-            except Exception as e:
-                logger.error(f"Error cancelling task {task_name}: {e}")
+                logger.debug(f"Cancelling task: {task_name}")
+
+        # Wait for all tasks to complete (with cancellation)
+        if self.tasks:
+            await asyncio.gather(*self.tasks.values(), return_exceptions=True)
+            logger.debug("All background tasks stopped")
+
+        # Unload all models
+        for name in list(self.models.keys()):
+            await self.unload_model(name)
 
         await self.bus.publish({"action": "model manager closed"})
 
     async def _cleanup_loop(self):
-        while True:
-            await asyncio.sleep(60)
+        logger.debug(f"Cleanup monitor is starting [{self.timeout}s] ...")
+        while not self._shutdown_event.is_set():
+            await asyncio.sleep(self.timeout)
             now = time.time()
             async with self.lock:
                 for name in list(self.models.keys()):
                     m = self.models[name]
                     if now - m.last_used > self.timeout:
                         await self.unload_model(name)
+        logger.debug("Cleanup monitor finished")
 
     async def _gpu_monitor_loop(self):
-        while True:
+        logger.debug(f"GPU monitor is starting [{settings.gpu_monitor_loop_delay}s] ...")
+        while not self._shutdown_event.is_set():
             await asyncio.sleep(settings.gpu_monitor_loop_delay)
             async with self.lock:
-                if self.gpu_tool == GpuTool.NVIDIA:
+                if self.gpu_tool is not None and self.gpu_tool == GpuTool.NVIDIA:
                     try:
                         output = subprocess.check_output(
                             [
@@ -183,7 +194,7 @@ class ModelManager:
                             m.gpu_mem_gb = used / max(1, len(self.models))
                     except Exception as e:
                         logger.error(f"NVIDIA GPU monitor failed: {e}")
-                elif self.gpu_tool == GpuTool.ROCM:
+                elif self.gpu_tool is not None and self.gpu_tool == GpuTool.ROCM:
                     try:
                         output = subprocess.check_output(["rocm-smi", "--showuse", "--json"], text=True)
                         import json
@@ -197,9 +208,14 @@ class ModelManager:
                 else:
                     for m in self.models.values():
                         m.gpu_mem_gb = 0.0
+                    logger.debug("GPU monitor value of 'gpu_tool' is unsupported, break")
+                    break
+
+        logger.debug("GPU monitor finished")
 
     async def _prometheus_loop(self):
-        while True:
+        logger.debug(f"Prometheus monitor is starting [{settings.prometheus_loop_delay}s] ...")
+        while not self._shutdown_event.is_set():
             await asyncio.sleep(settings.prometheus_loop_delay)
             async with self.lock:
                 self.model_count_gauge.set(len(self.models))
@@ -209,3 +225,4 @@ class ModelManager:
                     self.model_infer_gauge.labels(model=name).set(m.last_infer_time)
                     total_gpu += m.gpu_mem_gb
                 self.total_gpu_gauge.set(total_gpu)
+        logger.debug("Prometheus monitor finished")

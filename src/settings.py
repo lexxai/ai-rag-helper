@@ -1,5 +1,8 @@
+from pathlib import Path
 from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_PATH = Path(__file__).parent
 
 
 class Settings(BaseSettings):
@@ -8,7 +11,7 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file="../.env",
+        env_file=BASE_PATH.parent / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
