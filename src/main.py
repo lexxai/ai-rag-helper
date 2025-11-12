@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from logger_config import setup_root_logger, get_logger
 from model_manager import ModelManager
 from routers import cache, models
-from settings import settings
+from config.settings import settings
 
 # Setup root logger for the application
 setup_root_logger(level=settings.log_level)
