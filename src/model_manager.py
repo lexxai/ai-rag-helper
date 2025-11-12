@@ -79,13 +79,12 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self, timeout: int = None, check_gpu: bool = True, model_type: str = None):
+    def __init__(self, timeout: int = None, model_type: str = None):
         self.models: dict[str, ModelInstance] = {}
         self.model_type = model_type or "hf"
-        self.timeout = timeout or settings.model_manager_timeout
+        timeout = timeout or settings.model_manager_timeout
         self.lock = asyncio.Lock()
         self.bus = EventBus()
-        self.check_gpu = check_gpu
         self.gpu_tool = detect_gpu_tool()
         if settings.pre_import_on_boot:
             device = ModelInstance.get_device()
@@ -98,10 +97,15 @@ class ModelManager:
         self.total_gpu_gauge = Gauge("gpu_total_usage_gb", "Total GPU memory usage in GB")
 
         # Background tasks
-        self.tasks: dict[str, Task] = {"cleanup_loop": asyncio.create_task(self._cleanup_loop())}
-        if self.check_gpu:
-            self.tasks["gpu_monitor_loop"] = asyncio.create_task(self._gpu_monitor_loop())
-        self.tasks["prometheus_loop"] = asyncio.create_task(self._prometheus_loop())
+        self.tasks: dict[str, Task] = {}
+        if timeout:
+            self.tasks["cleanup_loop"] = asyncio.create_task(self._cleanup_loop(timeout))
+        if settings.gpu_monitor_loop_delay:
+            self.tasks["gpu_monitor_loop"] = asyncio.create_task(
+                self._gpu_monitor_loop(settings.gpu_monitor_loop_delay)
+            )
+        if settings.prometheus_loop_delay:
+            self.tasks["prometheus_loop"] = asyncio.create_task(self._prometheus_loop(settings.prometheus_loop_delay))
         self._shutdown_event = asyncio.Event()
 
         # logger.debug(f"{self.gpu_tool=}")
@@ -136,10 +140,9 @@ class ModelManager:
         if not (model_names := list(self.models.keys())):
             return False
         if model_name in model_names:
-            print("unload_model model_name", model_name)
             self.models[model_name].unload()
             del self.models[model_name]
-            logger.info(f"Model '{model_name}' is unloaded.")
+            logger.info(f"The model '{model_name}' is unloaded.")
             await self.bus.publish({"action": "unloaded", "model": model_name})
             return True
         return False
@@ -182,25 +185,23 @@ class ModelManager:
 
         await self.bus.publish({"action": "model manager closed"})
 
-    async def _cleanup_loop(self):
-        logger.debug(f"Cleanup monitor is starting [{self.timeout}s] ...")
+    async def _cleanup_loop(self, timeout: int):
+        logger.debug(f"Cleanup monitor is starting [{timeout}s] ...")
         while not self._shutdown_event.is_set():
-            await asyncio.sleep(self.timeout)
+            await asyncio.sleep(timeout)
             now = time.time()
             async with self.lock:
-                for name in list(self.models.keys()):
-                    # TODO check it
-                    print("_cleanup_loop", name)
-                    m = self.models[name]
+                for model_name in list(self.models.keys()):
+                    m = self.models[model_name]
                     if (now - m.last_used) > self.timeout:
-                        print("_cleanup_loop unload_model", name)
-                        await self.unload_model(name)
+                        logger.info(f"Cleanup unloading the model '{model_name}' by timeout inactivity.")
+                        await self.unload_model(model_name)
         logger.debug("Cleanup monitor finished")
 
-    async def _gpu_monitor_loop(self):
-        logger.debug(f"GPU monitor is starting [{settings.gpu_monitor_loop_delay}s] ...")
+    async def _gpu_monitor_loop(self, gpu_monitor_loop_delay: int):
+        logger.debug(f"GPU monitor is starting [{gpu_monitor_loop_delay}s] ...")
         while not self._shutdown_event.is_set():
-            await asyncio.sleep(settings.gpu_monitor_loop_delay)
+            await asyncio.sleep(gpu_monitor_loop_delay)
             async with self.lock:
                 if self.gpu_tool is not None and self.gpu_tool == GpuTool.NVIDIA:
                     try:
@@ -236,10 +237,10 @@ class ModelManager:
 
         logger.debug("GPU monitor finished")
 
-    async def _prometheus_loop(self):
-        logger.debug(f"Prometheus monitor is starting [{settings.prometheus_loop_delay}s] ...")
+    async def _prometheus_loop(self, prometheus_loop_delay: int):
+        logger.debug(f"Prometheus monitor is starting [{prometheus_loop_delay}s] ...")
         while not self._shutdown_event.is_set():
-            await asyncio.sleep(settings.prometheus_loop_delay)
+            await asyncio.sleep(prometheus_loop_delay)
             async with self.lock:
                 self.model_count_gauge.set(len(self.models))
                 total_gpu = 0.0

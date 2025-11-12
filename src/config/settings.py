@@ -33,11 +33,9 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
     cors_origins: list[str] = ["*"]
 
-    model_manager_timeout: int = 600
-    model_manager_check_gpu: bool = True
-
-    gpu_monitor_loop_delay: int = 5
-    prometheus_loop_delay: int = 15
+    model_manager_timeout: int = 600  # delay in seconds for check inactivity models
+    gpu_monitor_loop_delay: int = 5  # delay in seconds to check gpu usage
+    prometheus_loop_delay: int = 15  # delay in seconds to check prometheus metrics
 
     pre_import_on_boot: bool = False  # For preload pytorch module on boot
     approved_models_config_path: Path = Path("config/.models.yaml")
