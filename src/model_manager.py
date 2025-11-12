@@ -56,7 +56,7 @@ class ModelInstance:
                 cache_folder=settings.model_cache_folder,
                 device=device,
                 token=api_key,
-                local_files_only=True,
+                local_files_only=settings.model_cache_only_local,
             )
 
     async def infer(self, func, *args, **kwargs):
@@ -133,14 +133,15 @@ class ModelManager:
             return self.models[model_name]
 
     async def unload_model(self, model_name: str) -> bool:
-        async with self.lock:
-            if model_name in list(self.models.keys()):
-                print("unload_model model_name", model_name)
-                self.models[model_name].unload()
-                del self.models[model_name]
-                logger.info(f"Model '{model_name}' is unloaded.")
-                await self.bus.publish({"action": "unloaded", "model": model_name})
-                return True
+        if not (model_names := list(self.models.keys())):
+            return False
+        if model_name in model_names:
+            print("unload_model model_name", model_name)
+            self.models[model_name].unload()
+            del self.models[model_name]
+            logger.info(f"Model '{model_name}' is unloaded.")
+            await self.bus.publish({"action": "unloaded", "model": model_name})
+            return True
         return False
 
     async def list_loaded(self):

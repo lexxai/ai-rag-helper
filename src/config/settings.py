@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-BASE_PATH = Path(__file__).parent
+BASE_PATH = Path(__file__).parent.parent
 
 
 class Settings(BaseSettings):
@@ -40,8 +40,9 @@ class Settings(BaseSettings):
     prometheus_loop_delay: int = 15
 
     pre_import_on_boot: bool = False  # For preload pytorch module on boot
-    approved_models_config_path: Path = Path(".models.yaml")
+    approved_models_config_path: Path = Path("config/.models.yaml")
     model_cache_folder: Path = Path("models")
+    model_cache_only_local: bool = False
 
     huggingface_api_key: str | None = None
 
