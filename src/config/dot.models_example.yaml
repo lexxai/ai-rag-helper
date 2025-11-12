@@ -1,2 +1,4 @@
+# Example of .models.yaml file
+
 "hf":
   - "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
