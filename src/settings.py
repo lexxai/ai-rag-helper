@@ -20,10 +20,7 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    log_format: str = (
-        "%(asctime)s - %(name)s - %(levelname)s - "
-        "%(filename)s:%(lineno)d - %(message)s"
-    )
+    log_format: str = "%(asctime)s - %(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
 
     # Application Configuration
     app_name: str = "AI RAG Helper"
@@ -33,6 +30,12 @@ class Settings(BaseSettings):
     # API Configuration
     api_prefix: str = "/api/v1"
     cors_origins: list[str] = ["*"]
+
+    model_manager_timeout: int = 600
+    model_manager_check_gpu: bool = True
+
+    gpu_monitor_loop_delay: int = 15
+    prometheus_loop_delay: int = 15
 
 
 # Singleton instance
