@@ -1,6 +1,5 @@
 import asyncio
 import gc
-import shutil
 import subprocess
 import time
 from asyncio import Task
@@ -8,49 +7,15 @@ from functools import lru_cache
 
 from prometheus_client import Gauge
 
-from constants import GpuTool, GpuDevice, APPROVED_MODELS, GpuToolSMI
-from settings import settings
+from constants import GpuTool, GpuDevice, APPROVED_MODELS
+from events import EventBus
+from config.settings import settings
 
 
 from logger_config import get_logger
+from utils import detect_gpu_tool
 
 logger = get_logger(__name__)
-
-
-class EventBus:
-    """Simple async pub/sub bus."""
-
-    def __init__(self):
-        self.listeners: set[asyncio.Queue] = set()
-
-    async def subscribe(self) -> asyncio.Queue:
-        q = asyncio.Queue()
-        self.listeners.add(q)
-        return q
-
-    async def unsubscribe(self, q: asyncio.Queue):
-        self.listeners.discard(q)
-
-    async def publish(self, event: dict):
-        for q in list(self.listeners):
-            try:
-                q.put_nowait(event)
-            except asyncio.QueueFull:
-                pass
-
-
-# Singleton GPU detection
-def detect_gpu_tool() -> str | None:
-    """Detect GPU platform once."""
-    if hasattr(detect_gpu_tool, "_cached"):
-        return detect_gpu_tool._cached  # noqa
-    if shutil.which(GpuToolSMI.ROCM):
-        detect_gpu_tool._cached = GpuTool.ROCM
-    elif shutil.which(GpuToolSMI.NVIDIA):
-        detect_gpu_tool._cached = GpuTool.NVIDIA
-    else:
-        detect_gpu_tool._cached = None
-    return detect_gpu_tool._cached  # noqa
 
 
 class ModelInstance:
@@ -63,24 +28,35 @@ class ModelInstance:
         self.gpu_mem_gb = 0.0
         self.load_model()
 
-    @property
+    @classmethod
     @lru_cache(maxsize=1)
-    def device(self):
+    def get_device(cls):
         try:
+            logger.debug(f"Import torch & SentenceTransformer ...")
             import torch
+            from sentence_transformers import SentenceTransformer
 
+            return GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
         except ImportError:
             raise "Install torch dependency package"
 
-        return GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
+    @property
+    def device(self):
+        return self.get_device()
 
     def load_model(self):
         if self.model is None:
             device = self.device
             from sentence_transformers import SentenceTransformer
 
+            api_key = getattr(settings, "huggingface_api_key", None)
+
             self.model = SentenceTransformer(
-                self.model_name, cache_folder=settings.model_cache_folder, device=device, local_files_only=True
+                self.model_name,
+                cache_folder=settings.model_cache_folder,
+                device=device,
+                token=api_key,
+                local_files_only=True,
             )
 
     async def infer(self, func, *args, **kwargs):
@@ -103,13 +79,17 @@ class ModelInstance:
 
 
 class ModelManager:
-    def __init__(self, timeout: int = None, check_gpu: bool = True):
+    def __init__(self, timeout: int = None, check_gpu: bool = True, model_type: str = None):
         self.models: dict[str, ModelInstance] = {}
+        self.model_type = model_type or "hf"
         self.timeout = timeout or settings.model_manager_timeout
         self.lock = asyncio.Lock()
         self.bus = EventBus()
         self.check_gpu = check_gpu
         self.gpu_tool = detect_gpu_tool()
+        if settings.pre_import_on_boot:
+            device = ModelInstance.get_device()
+            logger.debug(f"Pre-imported modules. Detected: {device.name} ...")
 
         # Prometheus metrics.py
         self.model_count_gauge = Gauge("loaded_models_total", "Number of currently loaded models")
@@ -132,7 +112,8 @@ class ModelManager:
             return model_name in APPROVED_MODELS.get(model_type, [])
         return False
 
-    async def get_model(self, model_name: str, model_type: str = "hf") -> ModelInstance | None:
+    async def get_model(self, model_name: str, model_type: str = None) -> ModelInstance | None:
+        model_type = model_type or self.model_type
         if not self.check_model_name(model_name, model_type):
             logger.error(f"Loading model '{model_name}' is not approved for '{model_type}'")
             return None
@@ -168,13 +149,16 @@ class ModelManager:
             data.append(
                 {
                     "model": name,
-                    "device": inst.device,
+                    "device": str(inst.device),
                     "last_used": inst.last_used,
                     "last_infer_time": inst.last_infer_time,
                     "gpu_used_gb": inst.gpu_mem_gb,
                 }
             )
         return data
+
+    async def list_available(self):
+        return APPROVED_MODELS.get(self.model_type, [])
 
     async def close(self):
         # Signal shutdown to all loops
