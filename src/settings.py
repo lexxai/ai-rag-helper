@@ -37,8 +37,18 @@ class Settings(BaseSettings):
     model_manager_timeout: int = 600
     model_manager_check_gpu: bool = True
 
-    gpu_monitor_loop_delay: int = 15
+    gpu_monitor_loop_delay: int = 5
     prometheus_loop_delay: int = 15
+
+    model_cache_folder: Path = Path("models")
+
+    def __init__(self):
+        super().__init__()
+        cache_path = (BASE_PATH.parent / "data" / self.model_cache_folder).resolve()
+        if not cache_path.is_relative_to(BASE_PATH.parent):
+            raise ValueError("Model cache folder must be within the base directory")
+        self.model_cache_folder = cache_path
+        self.model_cache_folder.mkdir(exist_ok=True, parents=True)
 
 
 # Singleton instance

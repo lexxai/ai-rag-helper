@@ -35,14 +35,9 @@ def configure_logger(
     # Define log format
     if log_format is None:
         if include_timestamp:
-            log_format = (
-                "%(asctime)s - %(name)s - %(levelname)s - "
-                "%(filename)s:%(lineno)d - %(message)s"
-            )
+            log_format = "%(asctime)s - %(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
         else:
-            log_format = (
-                "%(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
-            )
+            log_format = "%(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
 
     formatter = logging.Formatter(log_format, datefmt="%Y-%m-%d %H:%M:%S")
     console_handler.setFormatter(formatter)
@@ -61,10 +56,7 @@ def setup_root_logger(level: str = "INFO", log_format: str | None = None) -> Non
         log_format: Optional custom log format string
     """
     if log_format is None:
-        log_format = (
-            "%(asctime)s - %(name)s - %(levelname)s - "
-            "%(filename)s:%(lineno)d - %(message)s"
-        )
+        log_format = "%(asctime)s - %(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
 
     logging.basicConfig(
         level=getattr(logging, level.upper()),
@@ -85,7 +77,7 @@ def get_logger(name: str, level: str | None = None) -> logging.Logger:
     Returns:
         Logger instance
     """
-    logger = logging.getLogger(name)
+    logger = logging.getLogger("RAG:" + name)
     if level:
         logger.setLevel(getattr(logging, level.upper()))
     return logger

@@ -4,17 +4,13 @@ import shutil
 import subprocess
 import time
 from asyncio import Task
+from functools import lru_cache
 
 from prometheus_client import Gauge
-from sentence_transformers import SentenceTransformer
 
-from constants import GpuTool, GpuDevice
+from constants import GpuTool, GpuDevice, APPROVED_MODELS
 from settings import settings
 
-try:
-    import torch
-except ImportError:
-    raise "Install torch dependency package"
 
 from logger_config import get_logger
 
@@ -60,12 +56,32 @@ def detect_gpu_tool() -> str | None:
 class ModelInstance:
     def __init__(self, model_name: str):
         self.model_name = model_name
-        self.model = SentenceTransformer(model_name)
+        self.model = None
         self.last_used = time.time()
         self.last_infer_time = 0.0
         self.lock = asyncio.Lock()
-        self.device = GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
         self.gpu_mem_gb = 0.0
+        self.load_model()
+
+    @property
+    @lru_cache(maxsize=1)
+    def device(self):
+        try:
+            import torch
+
+        except ImportError:
+            raise "Install torch dependency package"
+
+        return GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
+
+    def load_model(self):
+        if self.model is None:
+            device = self.device
+            from sentence_transformers import SentenceTransformer
+
+            self.model = SentenceTransformer(
+                self.model_name, cache_folder=settings.model_cache_folder, device=device, local_files_only=True
+            )
 
     async def infer(self, func, *args, **kwargs):
         async with self.lock:
@@ -79,8 +95,8 @@ class ModelInstance:
         try:
             del self.model
             gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            if self.device == GpuDevice.CUDA:
+                torch.cuda.empty_cache()  # noqa
             logger.debug(f"Unloaded model {self.model_name}")
         except Exception as e:
             logger.error(f"Error unloading {self.model_name}: {e}")
@@ -110,22 +126,41 @@ class ModelManager:
 
         # logger.debug(f"{self.gpu_tool=}")
 
-    async def get_model(self, model_name: str) -> ModelInstance:
+    @staticmethod
+    def check_model_name(model_name: str, model_type: str = "hf") -> bool:
+        if model_name:
+            return model_name in APPROVED_MODELS.get(model_type, [])
+        return False
+
+    async def get_model(self, model_name: str, model_type: str = "hf") -> ModelInstance | None:
+        if not self.check_model_name(model_name, model_type):
+            logger.error(f"Loading model '{model_name}' is not approved for '{model_type}'")
+            return None
+
         async with self.lock:
             if model_name not in self.models:
                 logger.debug(f"Loading model {model_name}")
-                self.models[model_name] = ModelInstance(model_name)
-                await self.bus.publish({"action": "loaded", "model": model_name})
+                try:
+                    self.models[model_name] = ModelInstance(model_name)
+                    self.models[model_name].last_used = time.time()
+                    await self.bus.publish({"action": "loaded", "model": model_name})
+                except Exception as e:
+                    logger.error(f"get_model[{model_name}] is unsuccessfully. {e} ")
+                    return None
             else:
                 self.models[model_name].last_used = time.time()
             return self.models[model_name]
 
-    async def unload_model(self, model_name: str):
+    async def unload_model(self, model_name: str) -> bool:
         async with self.lock:
-            if model_name in self.models:
+            if model_name in list(self.models.keys()):
+                print("unload_model model_name", model_name)
                 self.models[model_name].unload()
                 del self.models[model_name]
+                logger.info(f"Model '{model_name}' is unloaded.")
                 await self.bus.publish({"action": "unloaded", "model": model_name})
+                return True
+        return False
 
     async def list_loaded(self):
         data = []
@@ -169,8 +204,11 @@ class ModelManager:
             now = time.time()
             async with self.lock:
                 for name in list(self.models.keys()):
+                    # TODO check it
+                    print("_cleanup_loop", name)
                     m = self.models[name]
-                    if now - m.last_used > self.timeout:
+                    if (now - m.last_used) > self.timeout:
+                        print("_cleanup_loop unload_model", name)
                         await self.unload_model(name)
         logger.debug("Cleanup monitor finished")
 
