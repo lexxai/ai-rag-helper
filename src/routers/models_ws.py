@@ -2,7 +2,7 @@ import time
 
 from starlette.websockets import WebSocket
 
-from depends import get_model_manager
+from depends.depends import get_model_manager
 from handlers.models import handler_unload_model, handler_load_model
 from logger_config import get_logger
 from model_manager import ModelManager

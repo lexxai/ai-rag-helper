@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # API Configuration
     api_prefix: str = "/api/v1"
     cors_origins: list[str] = ["*"]
+    api_access_key: str | None = None
 
     model_manager_timeout: int = 600  # delay in seconds for check inactivity models
     gpu_monitor_loop_delay: int = 5  # delay in seconds to check gpu usage

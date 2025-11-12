@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Body, HTTPException
 from starlette import status
 
-from depends import get_model_manager
+from depends.model_manager import get_model_manager
 from handlers.models import handler_load_model, handler_unload_model, handler_list_loaded_models, handler_list_available
 from logger_config import get_logger
 from model_manager import ModelManager
