@@ -56,7 +56,8 @@ def setup_root_logger(level: str = "INFO", log_format: str | None = None) -> Non
         log_format: Optional custom log format string
     """
     if log_format is None:
-        log_format = "%(asctime)s - %(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
+        # log_format = "%(asctime)s - %(name)s - %(levelname)s - " "%(filename)s:%(lineno)d - %(message)s"
+        log_format = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s"
 
     logging.basicConfig(
         level=getattr(logging, level.upper()),
@@ -64,6 +65,8 @@ def setup_root_logger(level: str = "INFO", log_format: str | None = None) -> Non
         datefmt="%Y-%m-%d %H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)],
     )
+
+    logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 
 def get_logger(name: str, level: str | None = None) -> logging.Logger:
