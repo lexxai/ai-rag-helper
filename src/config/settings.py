@@ -96,7 +96,7 @@ class Settings(BaseSettings):
         if not approved_models_config_path.is_relative_to(BASE_PATH):
             raise ValueError("Model approved_models_config_path folder must be within the base directory")
         self.approved_models_config_path = approved_models_config_path
-        print(self.default_model_names)
+        # print(self.default_model_names)
 
 
 # Singleton instance
