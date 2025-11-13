@@ -1,3 +1,9 @@
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
+from starlette import status
+from starlette.requests import Request
+from starlette.responses import PlainTextResponse
+
 try:
     import orjson
     from fastapi.responses import ORJSONResponse  # noqa
@@ -42,6 +48,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class StarletteHTTPException:
+    pass
+
+
+# Unified handler (works for all three types)
+async def unified_validation_handler(request: Request, exc):
+    if isinstance(exc, RequestValidationError):
+        details = [
+            {
+                "field": " → ".join(str(loc) for loc in err["loc"]),
+                "message": err["msg"],
+                "type": err["type"],
+                "input": err.get("input"),
+            }
+            for err in exc.errors()
+        ]
+        message = "Validation failed"
+    else:
+        details = None
+        message = str(exc) or "Invalid request"
+
+    return RESPONSE_CLASS(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": "Bad Request",
+            "message": message,
+            "details": details,
+        },
+    )
+
+
+# Register each exception individually
+app.add_exception_handler(RequestValidationError, unified_validation_handler)
+app.add_exception_handler(ValueError, unified_validation_handler)
+app.add_exception_handler(ValidationError, unified_validation_handler)
+
 
 # Include routers with api_prefix from settings
 app.include_router(cache.router, prefix=settings.api_prefix)
