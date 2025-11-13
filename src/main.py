@@ -70,7 +70,7 @@ async def unified_validation_handler(request: Request, exc):
     else:
         details = None
         message = str(exc) or "Invalid request"
-
+    logger.error(f"{message}: {details}")
     return RESPONSE_CLASS(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={
