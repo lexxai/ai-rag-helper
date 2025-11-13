@@ -17,7 +17,7 @@ from config.settings import settings
 from config.swagger import swagger_params
 from lifespan import lifespan
 from logger_config import setup_root_logger, get_logger
-from routers import cache, models
+from routers import cache, models, embedding
 
 # Setup root logger for the application
 setup_root_logger(level=settings.log_level)
@@ -46,4 +46,5 @@ app.add_middleware(
 # Include routers with api_prefix from settings
 app.include_router(cache.router, prefix=settings.api_prefix)
 app.include_router(models.router, prefix=settings.api_prefix)
+app.include_router(embedding.router, prefix=settings.api_prefix)
 # app.include_router(ws.router_ws, prefix=settings.api_prefix)

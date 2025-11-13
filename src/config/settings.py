@@ -82,7 +82,7 @@ class Settings(BaseSettings):
         try:
             return json.loads(v)
         except:
-            return {"embed": "all-MiniLM-L6-v2"}
+            return {}
 
     def __init__(self):
         super().__init__()

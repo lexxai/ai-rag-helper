@@ -63,6 +63,10 @@ class ModelInstance:
     async def infer(self, func, *args, **kwargs):
         async with self.lock:
             start = time.time()
+            if isinstance(func, str):
+                func = getattr(self.model, func, None)
+            if not func:
+                raise ValueError("Invalid function name")
             result = await asyncio.to_thread(func, *args, **kwargs)
             self.last_used = time.time()
             self.last_infer_time = time.time() - start
