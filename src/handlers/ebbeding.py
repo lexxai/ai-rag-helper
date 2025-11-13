@@ -98,7 +98,7 @@ async def handler_embedding_cache(
     # ============================================================
     new_embeddings: list[np.ndarray] = []
     new_keys_to_cache: list[str] = []
-
+    # TODO bug with max_batch_size if less
     try:
         for start_idx in range(0, len(to_encode), max_batch_size):
             logger.debug(f"Using batch idx: {start_idx} for embedding")
