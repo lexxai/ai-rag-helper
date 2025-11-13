@@ -1,5 +1,9 @@
 # Example of .models.yaml file
 
 "hf":
-  - "sentence-transformers/all-MiniLM-L6-v2"
-  - "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+  "sentence-transformers/all-MiniLM-L6-v2":
+    dimensions: 384
+    max_tokens: 384
+  "sentence-transformers/paraphrase-multilingual-mpnet-base-v2":
+    dimensions: 768
+    max_tokens: 512

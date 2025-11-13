@@ -7,6 +7,7 @@ from functools import lru_cache
 from typing import Literal
 
 from prometheus_client import Gauge
+from starlette.concurrency import run_in_threadpool
 
 from constants import GpuTool, GpuDevice, GpuToolSMI
 from config.models_list_config import APPROVED_MODELS
@@ -71,7 +72,8 @@ class ModelInstance:
             if not func or not callable(func):
                 raise ValueError("Invalid function name")
             start = time.time()
-            result = await asyncio.to_thread(func, *args, **kwargs)
+            # result = await asyncio.to_thread(func, *args, **kwargs)
+            result = await run_in_threadpool(func, *args, **kwargs)
             self.last_used = time.time()
             self.last_infer_time = time.time() - start
             return result
@@ -122,8 +124,14 @@ class ModelManager:
     @staticmethod
     def check_model_name(model_name: str, model_type: str = "hf") -> bool:
         if model_name:
-            return model_name in APPROVED_MODELS.get(model_type, [])
+            return model_name in APPROVED_MODELS.get(model_type, {}).keys()
         return False
+
+    @staticmethod
+    def get_model_properties(model_name: str, model_type: str = "hf") -> dict | None:
+        if not model_name:
+            return None
+        return APPROVED_MODELS.get(model_type, {}).get(model_name)
 
     async def get_model(self, model_name: str, model_type: str = None) -> ModelInstance | None:
         model_type = model_type or self.model_type
@@ -170,8 +178,8 @@ class ModelManager:
             )
         return data
 
-    async def list_available(self):
-        return APPROVED_MODELS.get(self.model_type, [])
+    def list_available_models_name(self) -> list[str]:
+        return list(APPROVED_MODELS.get(self.model_type, {}).keys())
 
     async def close(self):
         # Signal shutdown to all loops

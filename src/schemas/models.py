@@ -1,4 +1,9 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, Field
+
+
+class FilterParamsModelName(BaseModel):
+
+    model_name: str = Field(description="Name of the model")
 
 
 class ModelLoadResponse(BaseModel):
