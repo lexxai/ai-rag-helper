@@ -10,7 +10,7 @@ from prometheus_client import Gauge
 from starlette.concurrency import run_in_threadpool
 
 from constants import GpuTool, GpuDevice, GpuToolSMI
-from config.models_list_config import APPROVED_MODELS
+from config.models_list_config import APPROVED_MODELS, models_list_config
 from events import EventBus
 from config.settings import settings
 
@@ -22,13 +22,14 @@ logger = get_logger(__name__)
 
 
 class ModelInstance:
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, local_files_only: bool = None):
         self.model_name = model_name
         self.model = None
         self.last_used = time.time()
         self.last_infer_time = 0.0
         self.lock = asyncio.Lock()
         self.gpu_mem_gb = 0.0
+        self.local_files_only = settings.model_cache_only_local if local_files_only is None else local_files_only
         self.load_model()
 
     @classmethod
@@ -60,7 +61,7 @@ class ModelInstance:
                 cache_folder=settings.model_cache_folder,
                 device=device,
                 token=hf_token,
-                local_files_only=settings.model_cache_only_local,
+                local_files_only=self.local_files_only,
                 backend=backend,  # noqa
                 truncate_dim=truncate_dim,
             )
@@ -133,7 +134,9 @@ class ModelManager:
             return None
         return APPROVED_MODELS.get(model_type, {}).get(model_name)
 
-    async def get_model(self, model_name: str, model_type: str = None) -> ModelInstance | None:
+    async def get_model(
+        self, model_name: str, model_type: str = None, local_files_only: bool = None
+    ) -> ModelInstance | None:
         model_type = model_type or self.model_type
         if not self.check_model_name(model_name, model_type):
             logger.error(f"Loading model '{model_name}' is not approved for '{model_type}'")
@@ -143,7 +146,7 @@ class ModelManager:
             if model_name not in self.models:
                 logger.debug(f"Loading model {model_name}")
                 try:
-                    self.models[model_name] = ModelInstance(model_name)
+                    self.models[model_name] = ModelInstance(model_name, local_files_only)
                     self.models[model_name].last_used = time.time()
                     await self.bus.publish({"action": "loaded", "model": model_name})
                 except Exception as e:
@@ -179,7 +182,7 @@ class ModelManager:
         return data
 
     def list_available_models_name(self) -> list[str]:
-        return list(APPROVED_MODELS.get(self.model_type, {}).keys())
+        return models_list_config.get_model_names(self.model_type)
 
     async def close(self):
         # Signal shutdown to all loops
@@ -267,3 +270,12 @@ class ModelManager:
                     total_gpu += m.gpu_mem_gb
                 self.total_gpu_gauge.set(total_gpu)
         logger.info("Prometheus monitor finished")
+
+    async def preload_available_models(self) -> list[str]:
+        result = []
+        for model_name in self.list_available_models_name():
+            model = await self.get_model(model_name, local_files_only=True)
+            if model:
+                result.append(model_name)
+                await self.unload_model(model_name)
+        return result

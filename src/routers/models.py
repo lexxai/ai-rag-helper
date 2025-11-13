@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from starlette import status
 
+from depends.auth import check_api_key
 from depends.model_manager import get_model_manager
 from handlers.models import (
     handler_load_model,
@@ -8,6 +9,7 @@ from handlers.models import (
     handler_list_loaded_models,
     handler_list_available,
     handler_retrieve_properties,
+    handler_preload_models,
 )
 from logger_config import get_logger
 from model_manager import ModelManager
@@ -56,4 +58,11 @@ async def retrieve_properties(
     model_name: str = Query(description="Model name"), manager: ModelManager = Depends(get_model_manager)
 ) -> dict | None:
     result = await handler_retrieve_properties(model_name, manager)
+    return result
+
+
+@router.get("/preload", dependencies=[Depends(check_api_key)])
+async def preload_models(manager: ModelManager = Depends(get_model_manager)) -> list[str]:
+    """Forced to preload all available models to the disk cache."""
+    result = await handler_preload_models(manager)
     return result
