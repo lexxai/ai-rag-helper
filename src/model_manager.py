@@ -282,7 +282,7 @@ class ModelManager:
         return result
 
     @staticmethod
-    def get_key(texts: list[str] | str, prefix: str = "hf") -> str:
+    async def generate_hash_key(texts: list[str] | str, prefix: str = "hf") -> str:
         joined = "||".join(texts) if isinstance(texts, list) else texts
-        hashed = hashlib.sha256(joined.encode("utf-8")).hexdigest()
-        return f"{prefix}:{hashed}"
+        hashed = await run_in_threadpool(hashlib.sha256, joined.encode("utf-8"))
+        return f"{prefix}:{hashed.hexdigest()}"

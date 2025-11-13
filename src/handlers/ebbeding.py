@@ -17,7 +17,7 @@ async def handler_embedding(
 ) -> dict[str, Any]:
     key = None
     if settings.embedding_cache_results and redis is not None:
-        key = manager.get_key(texts)
+        key = await manager.generate_hash_key(texts, "embeddings")
         cached = await redis.get(key)
         if cached is not None:
             embeddings = np.frombuffer(cached, dtype=np.float32).reshape(len(texts), -1)
