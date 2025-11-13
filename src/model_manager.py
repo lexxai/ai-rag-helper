@@ -5,19 +5,19 @@ import subprocess
 import time
 from asyncio import Task
 from functools import lru_cache
-from typing import Literal
 
-from prometheus_client import Gauge
+try:
+    from prometheus_client import Gauge
+except ImportError:
+    Gauge = None
 from starlette.concurrency import run_in_threadpool
 
-from constants import GpuTool, GpuDevice, GpuToolSMI
 from config.models_list_config import APPROVED_MODELS, models_list_config
-from events import EventBus
 from config.settings import settings
-
-
+from constants import GpuTool, GpuDevice, GpuToolSMI
+from events import EventBus
 from logger_config import get_logger
-from utils import detect_gpu_tool
+from utils import detect_gpu_tool, get_app_memory_usage
 
 logger = get_logger(__name__)
 
@@ -104,10 +104,14 @@ class ModelManager:
             logger.debug(f"Pre-imported modules. Detected: {device.name} ...")
 
         # Prometheus metrics.py
-        self.model_count_gauge = Gauge("loaded_models_total", "Number of currently loaded models")
-        self.model_gpu_gauge = Gauge("model_gpu_usage_gb", "Per-model GPU memory usage in GB", ["model"])
-        self.model_infer_gauge = Gauge("model_last_infer_seconds", "Last inference duration per model", ["model"])
-        self.total_gpu_gauge = Gauge("gpu_total_usage_gb", "Total GPU memory usage in GB")
+        self.model_count_gauge = Gauge("loaded_models_total", "Number of currently loaded models") if Gauge else None
+        self.model_gpu_gauge = (
+            Gauge("model_gpu_usage_gb", "Per-model GPU memory usage in GB", ["model"]) if Gauge else None
+        )
+        self.model_infer_gauge = (
+            Gauge("model_last_infer_seconds", "Last inference duration per model", ["model"]) if Gauge else None
+        )
+        self.total_gpu_gauge = Gauge("gpu_total_usage_gb", "Total GPU memory usage in GB") if Gauge else None
 
         # Background tasks
         self.tasks: dict[str, Task] = {}
@@ -120,6 +124,7 @@ class ModelManager:
         if settings.prometheus_loop_delay:
             self.tasks["prometheus_loop"] = asyncio.create_task(self._prometheus_loop(settings.prometheus_loop_delay))
         self._shutdown_event = asyncio.Event()
+        self.app_memory_usage = get_app_memory_usage()
 
         # logger.debug(f"{self.gpu_tool=}")
 
@@ -262,6 +267,9 @@ class ModelManager:
         logger.info(f"Prometheus monitor is starting [{prometheus_loop_delay}s] ...")
         while not self._shutdown_event.is_set():
             await asyncio.sleep(prometheus_loop_delay)
+            self.app_memory_usage = get_app_memory_usage()
+            if Gauge is None:
+                continue
             async with self.lock:
                 self.model_count_gauge.set(len(self.models))
                 total_gpu = 0.0
