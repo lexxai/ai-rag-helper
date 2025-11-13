@@ -9,6 +9,8 @@ class GpuTool(StrEnum):
 class GpuDevice(StrEnum):
     CUDA = "cuda"
     CPU = "cpu"
+    MPS = "mps"
+    NPU = "npu"
 
 
 class GpuToolSMI(StrEnum):

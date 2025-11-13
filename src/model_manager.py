@@ -4,6 +4,7 @@ import subprocess
 import time
 from asyncio import Task
 from functools import lru_cache
+from typing import Literal
 
 from prometheus_client import Gauge
 
@@ -51,22 +52,25 @@ class ModelInstance:
             from sentence_transformers import SentenceTransformer
 
             hf_token = getattr(settings, "hf_token", None)
-
-            self.model = SentenceTransformer(
+            backend = "torch"
+            truncate_dim = None
+            self.model: SentenceTransformer = SentenceTransformer(
                 self.model_name,
                 cache_folder=settings.model_cache_folder,
                 device=device,
                 token=hf_token,
                 local_files_only=settings.model_cache_only_local,
+                backend=backend,  # noqa
+                truncate_dim=truncate_dim,
             )
 
     async def infer(self, func, *args, **kwargs):
         async with self.lock:
-            start = time.time()
             if isinstance(func, str):
                 func = getattr(self.model, func, None)
-            if not func:
+            if not func or not callable(func):
                 raise ValueError("Invalid function name")
+            start = time.time()
             result = await asyncio.to_thread(func, *args, **kwargs)
             self.last_used = time.time()
             self.last_infer_time = time.time() - start
