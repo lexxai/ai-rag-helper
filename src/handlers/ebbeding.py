@@ -5,7 +5,10 @@ import numpy as np
 from redis.asyncio.client import Redis
 
 from config.settings import settings
+from logger_config import get_logger
 from model_manager import ModelManager
+
+logger = get_logger(__name__)
 
 
 def get_text_key(text: str):
@@ -44,7 +47,7 @@ async def handler_embedding_cache(
     texts: list[str],
     manager: ModelManager,
     redis: Redis | None,
-    max_batch_size: int = 32,
+    max_batch_size: int = None,
 ) -> dict[str, Any]:
     if not texts:
         return {"embeddings": [], "dimensions": 0, "model_name": model_name}
@@ -87,6 +90,9 @@ async def handler_embedding_cache(
     if not model:
         raise ValueError("Model not found")
 
+    max_batch_size = max_batch_size or manager.get_batch_size(model_name)
+    logger.debug(f"Using batch size {max_batch_size} for model {model_name}")
+
     # ============================================================
     # 3. Encode in chunks (batched)
     # ============================================================
@@ -95,6 +101,7 @@ async def handler_embedding_cache(
 
     try:
         for start_idx in range(0, len(to_encode), max_batch_size):
+            logger.debug(f"Using batch idx: {start_idx} for embedding")
             end_idx = start_idx + max_batch_size
             batch_texts: list[str] = to_encode[start_idx:end_idx]
             batch_indices = encode_indices[start_idx:end_idx]

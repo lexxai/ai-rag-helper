@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Dict, List
 
 import yaml
 
@@ -23,6 +22,14 @@ class ModelsListConfig:
     def get_model_names(self, model_type: str = None) -> list[str]:
         model_type = model_type or self.model_type
         return list(self.approved_models.get(model_type, {}).keys())
+
+    def get_models(self, model_type: str = None) -> dict:
+        model_type = model_type or self.model_type
+        return self.approved_models.get(model_type, {})
+
+    def get_model_properties(self, model_name: str, model_type: str = None) -> dict:
+        model_type = model_type or self.model_type
+        return self.approved_models.get(model_type, {}).get(model_name, {})
 
     def load_config(self) -> dict[str, dict[str, dict]]:
         """Load approved models from YAML configuration file."""

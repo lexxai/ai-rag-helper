@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 
 from config.models_list_config import APPROVED_MODELS, models_list_config
 from config.settings import settings
-from constants import GpuTool, GpuDevice, GpuToolSMI
+from constants import GpuTool, GpuDevice, GpuToolSMI, BatchSize
 from events import EventBus
 from logger_config import get_logger
 from utils import detect_gpu_tool, get_app_memory_usage
@@ -37,13 +37,13 @@ class ModelInstance:
     @lru_cache(maxsize=1)
     def get_device(cls):
         try:
-            logger.debug(f"Import torch & SentenceTransformer ...")
+            logger.debug("Import torch & SentenceTransformer ...")
             import torch
-            from sentence_transformers import SentenceTransformer
+            from sentence_transformers import SentenceTransformer  # noqa F401
 
             return GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
         except ImportError:
-            raise "Install torch dependency package"
+            raise "Install [torch, sentence_transformers] dependency package"
 
     @property
     def device(self):
@@ -222,6 +222,7 @@ class ModelManager:
                     if (now - m.last_used) > timeout:
                         logger.info(f"Cleanup unloading the model '{model_name}' by timeout inactivity.")
                         await self.unload_model(model_name)
+                self.app_memory_usage = get_app_memory_usage()
         logger.info("Cleanup monitor finished")
 
     async def _gpu_monitor_loop(self, gpu_monitor_loop_delay: int):
@@ -294,3 +295,16 @@ class ModelManager:
         joined = model_name + ("||".join(texts) if isinstance(texts, list) else texts)
         hashed = await run_in_threadpool(hashlib.sha256, joined.encode("utf-8"))
         return f"{prefix}:{hashed.hexdigest()}"
+
+    @staticmethod
+    def get_batch_size(model_name: str | None = None) -> int:
+        # 1. Model-specific override
+        if model_name is not None:
+            props = models_list_config.get_model_properties(model_name)
+            model_bs = props.get("batch_size")
+            if model_bs is not None:
+                return int(model_bs)  # ensure int
+
+        # 2. Device-based default
+        device = ModelInstance.get_device()  # returns GpuDevice
+        return BatchSize.from_device(device)
