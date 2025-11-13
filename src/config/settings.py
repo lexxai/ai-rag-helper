@@ -63,8 +63,9 @@ class Settings(BaseSettings):
     pre_import_on_boot: bool = False  # For preload pytorch module on boot
     approved_models_config_path: Path = Path("config/.models.yaml")
     model_cache_folder: Path = Path("models")
-    model_cache_only_local: bool = False
-
+    model_cache_folder_only_local: bool = False
+    embedding_cache_results: bool = True
+    embedding_cache_ttl: int = 60 * 60 * 24 * 7  # 1 week
     hf_token: str | None = None
 
     default_model_names: dict[str, str] = {

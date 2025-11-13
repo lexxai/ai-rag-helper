@@ -1,5 +1,6 @@
 import asyncio
 import gc
+import hashlib
 import subprocess
 import time
 from asyncio import Task
@@ -29,7 +30,7 @@ class ModelInstance:
         self.last_infer_time = 0.0
         self.lock = asyncio.Lock()
         self.gpu_mem_gb = 0.0
-        self.local_files_only = settings.model_cache_only_local if local_files_only is None else local_files_only
+        self.local_files_only = settings.model_cache_folder_only_local if local_files_only is None else local_files_only
         self.load_model()
 
     @classmethod
@@ -279,3 +280,9 @@ class ModelManager:
                 result.append(model_name)
                 await self.unload_model(model_name)
         return result
+
+    @staticmethod
+    def get_key(texts: list[str] | str, prefix: str = "hf") -> str:
+        joined = "||".join(texts) if isinstance(texts, list) else texts
+        hashed = hashlib.sha256(joined.encode("utf-8")).hexdigest()
+        return f"{prefix}:{hashed}"

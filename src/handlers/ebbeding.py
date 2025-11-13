@@ -1,9 +1,28 @@
+import hashlib
 from typing import Any
 
+import numpy as np
+from redis.asyncio.client import Redis
+
+from config.settings import settings
 from model_manager import ModelManager
 
 
-async def handler_embedding(model_name: str, texts: list[str], manager: ModelManager) -> dict[str, Any]:
+def get_text_key(text: str):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+async def handler_embedding(
+    model_name: str, texts: list[str], manager: ModelManager, redis: Redis | None
+) -> dict[str, Any]:
+    key = None
+    if settings.embedding_cache_results and redis is not None:
+        key = manager.get_key(texts)
+        cached = await redis.get(key)
+        if cached is not None:
+            embeddings = np.frombuffer(cached, dtype=np.float32).reshape(len(texts), -1)
+            dimensions = embeddings.shape[-1]
+            return {"embeddings": embeddings, "dimensions": dimensions, "model_name": model_name}
     model = await manager.get_model(model_name)
     if not model:
         raise ValueError("Model not found")
@@ -12,6 +31,9 @@ async def handler_embedding(model_name: str, texts: list[str], manager: ModelMan
         if embeddings is None:
             return {"embeddings": [], "dimensions": 0, "model_name": model_name}
         dimensions = embeddings.shape[-1]
-        return {"embeddings": embeddings.cpu().tolist(), "dimensions": dimensions, "model_name": model_name}
+        arr = embeddings.cpu().numpy()
+        if key is not None:
+            await redis.set(key, arr.tobytes(), ex=settings.embedding_cache_ttl)
+        return {"embeddings": arr, "dimensions": dimensions, "model_name": model_name}
     except Exception as e:
         raise ValueError(f"Failed to generate embeddings: {e}")
