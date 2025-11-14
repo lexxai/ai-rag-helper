@@ -1,8 +1,13 @@
+import hashlib
 import os
 import shutil
 
 
 from constants import GpuToolSMI, GpuTool
+
+
+def get_text_key(text: str):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 # Singleton GPU detection

@@ -2,17 +2,16 @@ from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from starlette import status
 from starlette.requests import Request
-from starlette.responses import PlainTextResponse
 
 try:
-    import orjson
-    from fastapi.responses import ORJSONResponse  # noqa
+    import orjson  # noqa F401
+    from fastapi.responses import ORJSONResponse  # noqa F401
 
     RESPONSE_CLASS = ORJSONResponse
 
 except ImportError:
-    import json
-    from fastapi.responses import JSONResponse
+    import json  # noqa F401
+    from fastapi.responses import JSONResponse  # noqa F401
 
     RESPONSE_CLASS = JSONResponse
 
@@ -23,7 +22,7 @@ from config.settings import settings
 from config.swagger import swagger_params
 from lifespan import lifespan
 from logger_config import setup_root_logger, get_logger
-from routers import cache, models, embedding
+from routers import cache, models, embedding, rerank
 
 # Setup root logger for the application
 setup_root_logger(level=settings.log_level)
@@ -91,4 +90,4 @@ app.add_exception_handler(ValidationError, unified_validation_handler)
 app.include_router(cache.router, prefix=settings.api_prefix)
 app.include_router(models.router, prefix=settings.api_prefix)
 app.include_router(embedding.router, prefix=settings.api_prefix)
-# app.include_router(ws.router_ws, prefix=settings.api_prefix)
+app.include_router(rerank.router, prefix=settings.api_prefix)

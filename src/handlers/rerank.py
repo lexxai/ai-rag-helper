@@ -25,7 +25,7 @@ async def handler_rerank(
     if not model:
         raise ValueError("Model not found")
     try:
-        scores = await model.infer("predict", pairs)
+        scores = await model.infer("predict", pairs, show_progress_bar=False)
         if scores is None:
             return {"scores": [], "sorted_candidates": [], "model_name": model_name}
         sorted_candidates = [c for _, c in sorted(zip(scores, candidates), reverse=True)]
@@ -49,7 +49,7 @@ async def handler_rerank_cache(
     if not model:
         raise ValueError("Model not found")
     try:
-        scores = await model.infer("predict", pairs)
+        scores = await model.infer("predict", pairs, show_progress_bar=False)
         if scores is None:
             return {"scores": [], "sorted_candidates": [], "model_name": model_name}
         sorted_candidates = [c for _, c in sorted(zip(scores, candidates), reverse=True)]

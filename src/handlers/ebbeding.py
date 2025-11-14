@@ -1,4 +1,3 @@
-import hashlib
 from typing import Any
 
 import numpy as np
@@ -9,10 +8,6 @@ from logger_config import get_logger
 from model_manager import ModelManager
 
 logger = get_logger(__name__)
-
-
-def get_text_key(text: str):
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 async def handler_embedding_cache(
