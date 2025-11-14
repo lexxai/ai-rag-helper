@@ -64,7 +64,7 @@ The manager is injected into route handlers via FastAPI's dependency injection s
    - cpu (default)
    - cu128 (CUDA 12.8)
    - rocm (ROCm 6.4; not supported on Windows)
-   - docker (skip installing torch host-side; useful when you rely on container)
+   - docker (skip installing torch; useful when you rely on container-used with 'rocm-pytorch' image)
 
 By default, the project’s uv configuration installs the `default_extras = ["ai-rag-helper[cpu]"]` group.
 
@@ -84,7 +84,7 @@ uv sync --extra cu128
 # ROCm (non-Windows)
 uv sync --extra rocm
 
-# No torch on host (use Docker instead)
+# No torch  (use Docker instead with 'rocm-pytorch' image)
 uv sync --extra docker
 ```
 
