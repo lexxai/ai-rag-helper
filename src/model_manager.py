@@ -23,8 +23,9 @@ logger = get_logger(__name__)
 
 
 class ModelInstance:
-    def __init__(self, model_name: str, local_files_only: bool = None):
+    def __init__(self, model_name: str, model_class_name: str = None, local_files_only: bool = None):
         self.model_name = model_name
+        self.model_class_name = model_class_name or self.decode_model_class_name(model_name)
         self.model = None
         self.last_used = time.time()
         self.last_infer_time = 0.0
@@ -37,9 +38,10 @@ class ModelInstance:
     @lru_cache(maxsize=1)
     def get_device(cls):
         try:
-            logger.debug("Import torch & SentenceTransformer ...")
+            logger.debug("Import torch ...")
             import torch
-            from sentence_transformers import SentenceTransformer  # noqa F401
+
+            # from sentence_transformers import SentenceTransformer, CrossEncoder  # noqa F401
 
             return GpuDevice.CUDA if torch.cuda.is_available() else GpuDevice.CPU
         except ImportError:
@@ -49,15 +51,35 @@ class ModelInstance:
     def device(self):
         return self.get_device()
 
+    @staticmethod
+    def decode_model_class_name(model_name: str) -> str:
+        items = model_name.strip().lower().split("/", maxsplit=1)
+        if len(items) == 2:
+            model_class_name = items[0]
+            return model_class_name
+        return "sentence-transformers"
+
     def load_model(self):
         if self.model is None:
             device = self.device
-            from sentence_transformers import SentenceTransformer
+            model_class = None
+            match self.model_class_name:
+                case "sentence-transformers":
+                    from sentence_transformers import SentenceTransformer
+
+                    model_class = SentenceTransformer
+                case "cross-encoder":
+                    from sentence_transformers import CrossEncoder
+
+                    model_class = CrossEncoder
+
+            if model_class is None:
+                raise ValueError("Invalid model class name")
 
             hf_token = getattr(settings, "hf_token", None)
             backend = "torch"
             truncate_dim = None
-            self.model: SentenceTransformer = SentenceTransformer(
+            self.model: SentenceTransformer = model_class(
                 self.model_name,
                 cache_folder=settings.model_cache_folder,
                 device=device,
