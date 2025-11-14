@@ -1,12 +1,17 @@
 from pydantic import BaseModel, Field
 
+from config.models_list_config import models_list_config
 from config.settings import settings
+
+example_model_name = settings.default_model_names["embed"]
+example_model_dimensions = models_list_config.get_model_properties(example_model_name).get("dimensions", 384)
 
 
 class EmbeddingRequest(BaseModel):
     texts: list[str] = Field(examples=[["hello world", "this is a test"]])
-    model: str | None = Field(default=None, examples=[settings.default_model_names["embed"]])
+    model: str | None = Field(default=None, examples=[example_model_name])
     dimensions: int | None = Field(default=None, description="Number of dimensions to return")
+    batch_size: int | None = Field(default=None, description="Batch size to use for inference")
 
 
 class EmbeddingResponse(BaseModel):
@@ -18,5 +23,5 @@ class EmbeddingResponse(BaseModel):
             ]
         ]
     )
-    dimensions: int = Field(examples=[384])
-    model_name: str = Field(examples=["sentence-transformers/all-MiniLM-L6-v2"])
+    dimensions: int = Field(examples=[example_model_dimensions])
+    model_name: str = Field(examples=[example_model_name])
