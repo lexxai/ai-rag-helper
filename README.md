@@ -27,6 +27,30 @@ The service wraps sentence-transformers/Hugging Face embedding models behind a s
 - Works with CPU/CUDA/ROCm PyTorch wheels (choose via extras)
 - Docker Compose setup with Redis
 
+## ModelManager
+
+The `ModelManager` is the core component responsible for managing embedding and reranking models throughout their lifecycle. It provides:
+
+### Key Responsibilities
+- **Model Loading & Unloading**: Dynamically loads models on-demand and manages memory by unloading inactive models
+- **Automatic Cleanup**: Background task that unloads models after a configurable timeout period of inactivity
+- **GPU Monitoring**: Tracks GPU memory usage for NVIDIA (via nvidia-smi) and AMD ROCm devices
+- **Prometheus Metrics**: Exposes model usage metrics including loaded model count, GPU memory per model, and inference times
+- **Thread-Safe Operations**: Uses async locks to ensure safe concurrent access to models
+- **Device Detection**: Automatically detects and uses available hardware (CPU, CUDA, or ROCm)
+
+### How It Works
+The ModelManager instantiates models using either `SentenceTransformer` (for embedding models) or `CrossEncoder` (for reranking models) from the sentence-transformers library. Each model is wrapped in a `ModelInstance` that tracks usage statistics and handles inference requests. Models are loaded lazily when first requested and can be preloaded to disk cache via the `/models/preload` endpoint.
+
+### Configuration
+ModelManager behavior is controlled by environment variables:
+- `MODEL_MANAGER_TIMEOUT`: Seconds of inactivity before auto-unloading (default: 600)
+- `GPU_MONITOR_LOOP_DELAY`: GPU monitoring interval in seconds (default: 5)
+- `PROMETHEUS_LOOP_DELAY`: Prometheus metrics update interval (default: 15)
+- `PRE_IMPORT_ON_BOOT`: Whether to import model libraries at startup (default: false)
+
+The manager is injected into route handlers via FastAPI's dependency injection system using `get_model_manager()`.
+
 ## Quickstart
 
 ### Prerequisites
@@ -123,6 +147,19 @@ Base prefix: `/api/v1`
     }
     ```
   - Response (`EmbeddingResponse`): vectors and metadata
+
+### Rerank
+- `POST /rerank/` → rerank documents based on query relevance
+  - Request body (`schemas/rerank.py`):
+    ```json
+    {
+      "query": "What is machine learning?",
+      "candidates": ["ML is a subset of AI", "The sky is blue", "Neural networks learn patterns"],
+      "model": "sentence-transformers/all-MiniLM-L6-v2"
+    }
+    ```
+  - Response (`RerankResponse`): ranked candidates with relevance scores
+  - Uses cross-encoder models to score query-document pairs for better relevance ranking in RAG pipelines
 
 ### Cache (requires API key dependency on router or endpoint)
 - `POST /cache/set` with body `{ "key": "k", "value": "v" }`
