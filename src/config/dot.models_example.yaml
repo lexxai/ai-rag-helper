@@ -1,4 +1,4 @@
-# Example of .models.yaml file
+# Example of .models.yaml file, properties of a model: dimensions, max_tokens, batch_size
 
 "hf":
   "sentence-transformers/all-MiniLM-L6-v2":
