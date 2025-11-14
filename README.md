@@ -115,8 +115,12 @@ The repository includes a Dockerfile and docker-compose.yaml.
 
 Basic run (CPU by default):
 ```
-docker compose up -d --build
-docker compose logs -f api
+docker compose up -d --build && docker compose logs -f api
+```
+
+Basic build and run with extra parameters:
+```
+docker compose build --build-arg EXTRA=cu128 api && docker compose up -d  && docker compose logs -f api
 ```
 
 ### Notes
@@ -224,4 +228,4 @@ ai-rag-helper/
 ```
 
 ## License
-This repository’s license is not specified in this README. If you intend to open-source it, consider adding a LICENSE file.
+This repository’s license is MIT.

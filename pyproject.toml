@@ -2,15 +2,17 @@
 name = "ai-rag-helper"
 version = "0.1.0"
 description = "AI RAG Helper"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.121.1",
-    "pydantic-settings>=2.11.0",
+    "fastapi==0.121.2",
+    "pydantic-settings==2.12.0",
     "redis[hiredis]>=7.0.1",
     "uvicorn>=0.38.0",
     "orjson>=3.11.4",
     "hf-xet>=1.2.0",
     "sentence-transformers>=5.1.2",
+    "torch==2.9.1",
 ]
 
 [dependency-groups]
