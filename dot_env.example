@@ -22,6 +22,6 @@
 # GPU_MONITOR_LOOP_DELAY=5
 # PROMETHEUS_LOOP_DELAY=15
 
-# DEFAULT_MODEL_NAMES='{"embed": "hf:sentence-transformers/all-MiniLM-L6-v2", "rerank": "hf:sentence-transformers/all-MiniLM-L6-v2"}'
+# DEFAULT_MODEL_NAMES='{"embed": "hf:sentence-transformers/all-MiniLM-L6-v2", "rerank": "hf:cross-encoder/ms-marco-MiniLM-L-6-v2"}'
 # MODEL_CACHE_FOLDER_ONLY_LOCAL=False
 # EMBEDDING_CACHE_RESULTS=True

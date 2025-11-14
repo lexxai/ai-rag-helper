@@ -56,7 +56,7 @@ async def list_loaded_models(manager: ModelManager = Depends(get_model_manager))
 def list_available_models(
     model_types: str | None = None, manager: ModelManager = Depends(get_model_manager)
 ) -> list[str]:
-    model_types = model_types.strip('"').strip("'").strip()
+    model_types = model_types.strip('"').strip("'").strip() if model_types else None
     result = handler_list_available_names(manager, model_types)
     return result
 

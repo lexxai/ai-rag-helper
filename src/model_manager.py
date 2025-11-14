@@ -23,9 +23,9 @@ logger = get_logger(__name__)
 
 
 class ModelInstance:
-    def __init__(self, model_name: str, model_class_name: str = None, local_files_only: bool = None):
+    def __init__(self, model_name: str, model_class_name: str, local_files_only: bool = None):
         self.model_name = model_name
-        self.model_class_name = model_class_name or self.decode_model_class_name(model_name)
+        self.model_class_name = model_class_name
         self.model = None
         self.last_used = time.time()
         self.last_infer_time = 0.0
@@ -51,43 +51,37 @@ class ModelInstance:
     def device(self):
         return self.get_device()
 
-    @staticmethod
-    def decode_model_class_name(model_name: str) -> str:
-        items = model_name.strip().lower().split("/", maxsplit=1)
-        if len(items) == 2:
-            model_class_name = items[0]
-            return model_class_name
-        return "sentence-transformers"
-
     def load_model(self):
         if self.model is None:
             device = self.device
             model_class = None
+            hf_token = getattr(settings, "hf_token", None)
+            backend = "torch"
+            truncate_dim = None
+            model_params = {
+                "model_name_or_path": self.model_name,
+                "cache_folder": settings.model_cache_folder,
+                "device": device,
+                "token": hf_token,
+                "local_files_only": self.local_files_only,
+                "backend": backend,  # noqa
+            }
             match self.model_class_name:
                 case "sentence-transformers":
                     from sentence_transformers import SentenceTransformer
 
                     model_class = SentenceTransformer
+                    model_params["truncate_dim"] = truncate_dim
+
                 case "cross-encoder":
                     from sentence_transformers import CrossEncoder
 
                     model_class = CrossEncoder
 
             if model_class is None:
-                raise ValueError("Invalid model class name")
+                raise ValueError(f"Invalid model class name: {model_class}/{self.model_class_name}")
 
-            hf_token = getattr(settings, "hf_token", None)
-            backend = "torch"
-            truncate_dim = None
-            self.model: SentenceTransformer = model_class(
-                self.model_name,
-                cache_folder=settings.model_cache_folder,
-                device=device,
-                token=hf_token,
-                local_files_only=self.local_files_only,
-                backend=backend,  # noqa
-                truncate_dim=truncate_dim,
-            )
+            self.model: SentenceTransformer | CrossEncoder = model_class(**model_params)
 
     async def infer(self, func, *args, **kwargs):
         async with self.lock:
@@ -152,13 +146,36 @@ class ModelManager:
 
     @staticmethod
     def check_model_name(model_name: str) -> bool:
+        """
+        Validates the provided model name by stripping any surrounding quotes or
+        extra spaces and checking it against the configuration for allowed model
+        names.
+
+        :param model_name: The name of the model to validate, provided as a string.
+        :return: True if the model name is valid and matches the configuration,
+            otherwise False.
+        """
         model_name = model_name.strip('"').strip("'").strip()
         if not model_name:
             return False
         return models_list_config.validate_model_name(model_name)
 
     @staticmethod
-    def decode_model_name(model_name: str) -> tuple[str, str]:
+    def decode_model_name(model_name: str) -> tuple[str, str, str]:
+        """
+        Decodes a given model name string into its components by splitting it based on a
+        specified delimiter and extracting the model type and model class name.
+
+        If the given model name contains the delimiter ':', it splits the name into a
+        model type and a model name. Otherwise, it uses a default model type. This method
+        also decodes the model class name using an internal decoder method.
+
+        :param model_name: The model name string to be decoded.
+        :type model_name: str
+        :return: A tuple containing the model type, the model name, and the decoded
+                 model class name.
+        :rtype: tuple[str, str, str]
+        """
         model_name = model_name.strip('"').strip("'").strip()
         return models_list_config.decode_model_name(model_name)
 
@@ -178,8 +195,12 @@ class ModelManager:
             if model_name not in self.models:
                 logger.debug(f"Loading model {model_name}")
                 try:
-                    model_type, model_name_strip = self.decode_model_name(model_name)
-                    self.models[model_name] = ModelInstance(model_name_strip, local_files_only)
+                    model_type, model_name_strip, model_class_name = self.decode_model_name(model_name)
+                    self.models[model_name] = ModelInstance(
+                        model_name=model_name_strip,
+                        model_class_name=model_class_name,
+                        local_files_only=local_files_only,
+                    )
                     self.models[model_name].last_used = time.time()
                     await self.bus.publish({"action": "loaded", "model": model_name})
                 except Exception as e:
