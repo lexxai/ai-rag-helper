@@ -7,6 +7,7 @@ class EmbeddingRequest(BaseModel):
     texts: list[str] = Field(examples=[["hello world", "this is a test"]])
     model: str | None = Field(default=None, examples=[settings.default_model_names["embed"]])
     dimensions: int | None = Field(default=None, description="Number of dimensions to return")
+    batch_size: int | None = Field(default=None, description="Batch size to use for inference")
 
 
 class EmbeddingResponse(BaseModel):
