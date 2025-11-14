@@ -111,9 +111,7 @@ async def handler_embedding_cache(
             batch_keys: list[str] | None = [keys[i] for i in batch_indices] if keys else None
 
             # Model inference (one batch)
-            if model is None:
-                # Check if the model was not unloaded during a long batch
-                model = await manager.get_model(model_name)
+            model = await manager.get_model(model_name)
             batch_tensor = await model.infer("encode", batch_texts, convert_to_tensor=True, show_progress_bar=False)
 
             if batch_tensor is None or batch_tensor.numel() == 0:

@@ -260,7 +260,7 @@ class ModelManager:
                 else:
                     for m in self.models.values():
                         m.gpu_mem_gb = 0.0
-                    logger.debug("GPU monitor value of 'gpu_tool' is unsupported, break")
+                    logger.info("No supported GPU monitoring device (NVIDIA/ROCm) was found")
                     break
 
         logger.info("GPU monitor finished")
