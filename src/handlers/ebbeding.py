@@ -87,18 +87,21 @@ async def handler_embedding_cache(
     # 2. Load model
     # ============================================================
     model = await manager.get_model(model_name)
-    if not model:
+    if model is None:
         raise ValueError("Model not found")
 
     max_batch_size = max_batch_size or manager.get_batch_size(model_name)
     logger.debug(f"Using batch size {max_batch_size} for model {model_name}")
+
+    if not to_encode:
+        to_encode = texts
+        encode_indices = list(range(len(texts)))
 
     # ============================================================
     # 3. Encode in chunks (batched)
     # ============================================================
     new_embeddings: list[np.ndarray] = []
     new_keys_to_cache: list[str] = []
-    # TODO bug with max_batch_size if less
     try:
         for start_idx in range(0, len(to_encode), max_batch_size):
             logger.debug(f"Using batch idx: {start_idx} for embedding")
@@ -108,6 +111,9 @@ async def handler_embedding_cache(
             batch_keys: list[str] | None = [keys[i] for i in batch_indices] if keys else None
 
             # Model inference (one batch)
+            if model is None:
+                # Check if the model was not unloaded during a long batch
+                model = await manager.get_model(model_name)
             batch_tensor = await model.infer("encode", batch_texts, convert_to_tensor=True, show_progress_bar=False)
 
             if batch_tensor is None or batch_tensor.numel() == 0:
@@ -119,12 +125,12 @@ async def handler_embedding_cache(
                 elif batch_arr.shape[-1] != dimensions:
                     raise ValueError("Embedding dimension mismatch across batches")
 
-            # Store results in correct positions
-            for emb, idx, key in zip(batch_arr, batch_indices, batch_keys or []):
-                cached_embeddings[idx] = emb
-                new_embeddings.append(emb)
-                if key:
-                    new_keys_to_cache.append(key)
+                # Store results in correct positions
+                for emb, idx, key in zip(batch_arr, batch_indices, batch_keys or ([None] * len(batch_indices))):
+                    cached_embeddings[idx] = emb
+                    new_embeddings.append(emb)
+                    if key:
+                        new_keys_to_cache.append(key)
 
             # Optional: cache this batch immediately (or defer)
             if batch_keys and redis is not None:
