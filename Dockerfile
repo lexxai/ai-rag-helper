@@ -43,9 +43,9 @@ ENV UV_PYTHON=${UV_PYTHON}
 #--locked
 RUN --mount=type=cache,target=/root/.cache/uv \
     if [ "${EXTRA}" = "docker" ]; then \
-        uv sync --locked --no-group dev --no-install-package torch --no-install-package pytorch-triton-rocm; \
+        uv sync --locked  --no-group dev --no-group default_extras --extra monitoring --no-install-package torch --no-install-package pytorch-triton-rocm; \
     else \
-        uv sync --locked --no-group dev --extra ${EXTRA}; \
+        uv sync --locked --no-group dev --extra monitoring --extra ${EXTRA}; \
     fi
 
 FROM ${REPO}

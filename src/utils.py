@@ -29,5 +29,4 @@ try:
 
 except ImportError:
 
-    def get_app_memory_usage() -> float:
-        return 0
+    get_app_memory_usage = None
