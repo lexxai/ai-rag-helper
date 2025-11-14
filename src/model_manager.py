@@ -124,7 +124,7 @@ class ModelManager:
         if settings.prometheus_loop_delay:
             self.tasks["prometheus_loop"] = asyncio.create_task(self._prometheus_loop(settings.prometheus_loop_delay))
         self._shutdown_event = asyncio.Event()
-        self.app_memory_usage = get_app_memory_usage()
+        self.app_memory_usage = get_app_memory_usage() if get_app_memory_usage is not None else 0.0
 
         # logger.debug(f"{self.gpu_tool=}")
 
@@ -222,7 +222,8 @@ class ModelManager:
                     if (now - m.last_used) > timeout:
                         logger.info(f"Cleanup unloading the model '{model_name}' by timeout inactivity.")
                         await self.unload_model(model_name)
-                self.app_memory_usage = get_app_memory_usage()
+                if get_app_memory_usage is not None:
+                    self.app_memory_usage = get_app_memory_usage()
         logger.info("Cleanup monitor finished")
 
     async def _gpu_monitor_loop(self, gpu_monitor_loop_delay: int):
@@ -265,6 +266,11 @@ class ModelManager:
         logger.info("GPU monitor finished")
 
     async def _prometheus_loop(self, prometheus_loop_delay: int):
+        if Gauge is None and get_app_memory_usage is None:
+            logger.info(
+                "Prometheus monitor finished: required monitoring packages (prometheus_client and psutil) are not installed"
+            )
+            return
         logger.info(f"Prometheus monitor is starting [{prometheus_loop_delay}s] ...")
         while not self._shutdown_event.is_set():
             await asyncio.sleep(prometheus_loop_delay)
