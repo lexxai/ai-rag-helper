@@ -13,8 +13,10 @@ class ModelLoadResponse(BaseModel):
 
 
 class ModelListItems(BaseModel):
-    model: str
+    model_type: str
+    model_name: str
     device: str
     last_used: float
     last_infer_time: float
     gpu_used_gb: float
+    timeout: int = None

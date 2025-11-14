@@ -129,10 +129,16 @@ class ModelManager:
         # logger.debug(f"{self.gpu_tool=}")
 
     @staticmethod
-    def check_model_name(model_name: str, model_type: str = "hf") -> bool:
-        if model_name:
-            return model_name in APPROVED_MODELS.get(model_type, {}).keys()
-        return False
+    def check_model_name(model_name: str) -> bool:
+        model_name = model_name.strip('"').strip("'").strip()
+        if not model_name:
+            return False
+        return models_list_config.validate_model_name(model_name)
+
+    @staticmethod
+    def decode_model_name(model_name: str) -> tuple[str, str]:
+        model_name = model_name.strip('"').strip("'").strip()
+        return models_list_config.decode_model_name(model_name)
 
     @staticmethod
     def get_model_properties(model_name: str, model_type: str = "hf") -> dict | None:
@@ -140,19 +146,18 @@ class ModelManager:
             return None
         return APPROVED_MODELS.get(model_type, {}).get(model_name)
 
-    async def get_model(
-        self, model_name: str, model_type: str = None, local_files_only: bool = None
-    ) -> ModelInstance | None:
-        model_type = model_type or self.model_type
-        if not self.check_model_name(model_name, model_type):
-            logger.error(f"Loading model '{model_name}' is not approved for '{model_type}'")
+    async def get_model(self, model_name: str, local_files_only: bool = None) -> ModelInstance | None:
+        if not self.check_model_name(model_name):
+            logger.error(f"Loading model '{model_name}' is not approved")
             return None
 
+        model_name = model_name.strip('"').strip("'").strip()
         async with self.lock:
             if model_name not in self.models:
                 logger.debug(f"Loading model {model_name}")
                 try:
-                    self.models[model_name] = ModelInstance(model_name, local_files_only)
+                    model_type, model_name_strip = self.decode_model_name(model_name)
+                    self.models[model_name] = ModelInstance(model_name_strip, local_files_only)
                     self.models[model_name].last_used = time.time()
                     await self.bus.publish({"action": "loaded", "model": model_name})
                 except Exception as e:
@@ -165,6 +170,10 @@ class ModelManager:
     async def unload_model(self, model_name: str) -> bool:
         if not (model_names := list(self.models.keys())):
             return False
+        if not self.check_model_name(model_name):
+            return False
+
+        model_name = model_name.strip('"').strip("'").strip()
         if model_name in model_names:
             self.models[model_name].unload()
             del self.models[model_name]
@@ -175,20 +184,28 @@ class ModelManager:
 
     async def list_loaded(self):
         data = []
-        for name, inst in self.models.items():
-            data.append(
-                {
-                    "model": name,
-                    "device": str(inst.device),
-                    "last_used": inst.last_used,
-                    "last_infer_time": inst.last_infer_time,
-                    "gpu_used_gb": inst.gpu_mem_gb,
-                }
-            )
+        for model_name, inst in self.models.items():
+            model_type, model_name_strip = self.decode_model_name(model_name)
+            information = {
+                "model_type": model_type,
+                "model_name": model_name_strip,
+                "device": str(inst.device),
+                "last_used": inst.last_used,
+                "last_infer_time": inst.last_infer_time,
+                "gpu_used_gb": inst.gpu_mem_gb,
+            }
+            if settings.model_manager_timeout > 0:
+                information["timeout"] = int(settings.model_manager_timeout - (time.time() - inst.last_used))
+            data.append(information)
         return data
 
-    def list_available_models_name(self) -> list[str]:
-        return models_list_config.get_model_names(self.model_type)
+    def list_available_model_names(self, model_type: str = None) -> list[str]:
+        model_type = model_type or self.model_type
+        return models_list_config.get_model_names(model_type)
+
+    @staticmethod
+    def list_available_model_types():
+        return models_list_config.get_model_types()
 
     async def close(self):
         # Signal shutdown to all loops
@@ -289,7 +306,7 @@ class ModelManager:
 
     async def preload_available_models(self) -> list[str]:
         result = []
-        for model_name in self.list_available_models_name():
+        for model_name in self.list_available_model_names():
             model = await self.get_model(model_name, local_files_only=True)
             if model:
                 result.append(model_name)

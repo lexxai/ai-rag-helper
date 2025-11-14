@@ -19,17 +19,30 @@ class ModelsListConfig:
         self.approved_models = self.load_config()
         self.model_type = "hf"
 
+    def get_model_types(self) -> list[str]:
+        return list(self.approved_models.keys())
+
     def get_model_names(self, model_type: str = None) -> list[str]:
         model_type = model_type or self.model_type
-        return list(self.approved_models.get(model_type, {}).keys())
+        return [f"{model_type}:{name}" for name in self.approved_models.get(model_type, {}).keys()]
 
     def get_models(self, model_type: str = None) -> dict:
-        model_type = model_type or self.model_type
         return self.approved_models.get(model_type, {})
 
-    def get_model_properties(self, model_name: str, model_type: str = None) -> dict:
-        model_type = model_type or self.model_type
+    def decode_model_name(self, model_name: str) -> tuple[str, str]:
+        items = model_name.split(":", maxsplit=1)
+        if len(items) == 2:
+            model_type, model_name = items
+            return model_type, model_name
+        return self.model_type, model_name
+
+    def get_model_properties(self, model_name: str) -> dict:
+        model_type, model_name = self.decode_model_name(model_name)
         return self.approved_models.get(model_type, {}).get(model_name, {})
+
+    def validate_model_name(self, model_name: str) -> bool:
+        model_type, model_name = self.decode_model_name(model_name)
+        return model_type in self.approved_models and model_name in self.approved_models[model_type]
 
     def load_config(self) -> dict[str, dict[str, dict]]:
         """Load approved models from YAML configuration file."""

@@ -1,16 +1,27 @@
-# Redis Configuration
+## Redis Configuration
 # REDIS_URL=redis://redis:6379/0
-# REDIS_MAX_CONNECTIONS=10
 
-# Logging Configuration
+## Logging Configuration
 # LOG_LEVEL=INFO
 # LOG_FORMAT=%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s
 
-# Application Configuration
+## Application Configuration
 # APP_NAME=AI RAG Helper
 # APP_VERSION=0.0.1
 # DEBUG=false
 
-# API Configuration
+## API Configuration
 # API_PREFIX=/api/v1
 # CORS_ORIGINS=["*"]
+
+# EXTRA=cpu
+
+# HF_TOKEN=
+
+# MODEL_MANAGER_TIMEOUT=600
+# GPU_MONITOR_LOOP_DELAY=5
+# PROMETHEUS_LOOP_DELAY=15
+
+# DEFAULT_MODEL_NAMES='{"embed": "hf:sentence-transformers/all-MiniLM-L6-v2", "rerank": "hf:sentence-transformers/all-MiniLM-L6-v2"}'
+# MODEL_CACHE_FOLDER_ONLY_LOCAL=False
+# EMBEDDING_CACHE_RESULTS=True

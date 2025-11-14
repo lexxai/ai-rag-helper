@@ -5,7 +5,7 @@ except ImportError:
     import json
 
 from pathlib import Path
-from typing import Literal, Annotated, Optional
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -69,20 +69,20 @@ class Settings(BaseSettings):
     hf_token: str | None = None
 
     default_model_names: dict[str, str] = {
-        "embed": "sentence-transformers/all-MiniLM-L6-v2",
-        "rerank": "sentence-transformers/all-MiniLM-L6-v2",
+        "embed": "hf:sentence-transformers/all-MiniLM-L6-v2",
+        "rerank": "hf:sentence-transformers/all-MiniLM-L6-v2",
     }
 
     @field_validator("default_model_names", mode="before")
     @classmethod
     def parse(cls, v):
         if not v:
-            return {"embed": "all-MiniLM-L6-v2", "rerank": "all-MiniLM-L6-v2"}
+            return {"embed": "", "rerank": ""}
         if isinstance(v, dict):
             return v
         try:
             return json.loads(v)
-        except:
+        except Exception:
             return {}
 
     def __init__(self):

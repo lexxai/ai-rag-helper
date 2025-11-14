@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from config.settings import settings
 from depends.databases import get_redis_session
 from depends.model_manager import get_model_manager
-from handlers.ebbeding import handler_embedding_cache
+from handlers.ebbeding import handler_embedding_cache_per_item
 from logger_config import get_logger
 from model_manager import ModelManager
 from schemas.embedding import EmbeddingRequest, EmbeddingResponse
@@ -21,5 +21,8 @@ async def embed(
     max_batch_size = req.batch_size
     if not model_name:
         raise ValueError("Model name is required")
-    results = await handler_embedding_cache(model_name, req.texts, manager, redis, max_batch_size=max_batch_size) or {}
+    results = (
+        await handler_embedding_cache_per_item(model_name, req.texts, manager, redis, max_batch_size=max_batch_size)
+        or {}
+    )
     return EmbeddingResponse(**results)

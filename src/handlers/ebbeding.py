@@ -15,7 +15,7 @@ def get_text_key(text: str):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-async def handler_embedding(
+async def handler_embedding_cache(
     model_name: str, texts: list[str], manager: ModelManager, redis: Redis | None
 ) -> dict[str, Any]:
     key = None
@@ -42,7 +42,7 @@ async def handler_embedding(
         raise ValueError(f"Failed to generate embeddings: {e}")
 
 
-async def handler_embedding_cache(
+async def handler_embedding_cache_per_item(
     model_name: str,
     texts: list[str],
     manager: ModelManager,

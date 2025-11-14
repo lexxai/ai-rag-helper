@@ -14,11 +14,15 @@ async def handler_list_loaded_models(manager: ModelManager) -> list[ModelListIte
     return await manager.list_loaded()
 
 
-async def handler_list_available(manager: ModelManager) -> list[str]:
-    return manager.list_available_models_name()
+def handler_list_available_types(manager: ModelManager) -> list[str]:
+    return manager.list_available_model_types()
 
 
-async def handler_retrieve_properties(model_name: str, manager: ModelManager) -> dict | None:
+def handler_list_available_names(manager: ModelManager, model_types: str = None) -> list[str]:
+    return manager.list_available_model_names(model_types)
+
+
+def handler_retrieve_properties(model_name: str, manager: ModelManager) -> dict | None:
     return manager.get_model_properties(model_name)
 
 
