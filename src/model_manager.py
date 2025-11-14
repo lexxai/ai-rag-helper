@@ -350,7 +350,7 @@ class ModelManager:
     async def preload_available_models(self) -> list[str]:
         result = []
         for model_name in self.list_available_model_names():
-            model = await self.get_model(model_name, local_files_only=True)
+            model = await self.get_model(model_name, local_files_only=False)
             if model:
                 result.append(model_name)
                 await self.unload_model(model_name)
