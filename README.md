@@ -3,7 +3,7 @@ AI RAG Helper
 
 High-level FastAPI service to help with RAG (Retrieval Augmented Generation) pipelines. It manages approved embedding models, provides an API to preload/unload models, compute embeddings with optional Redis caching, and exposes basic monitoring hooks. The project is designed to run locally with Python/uv or via Docker Compose and supports CPU, CUDA, and ROCm PyTorch builds via optional dependency extras.
 
-Contents
+## Contents
 - Overview
 - Features
 - Quickstart
@@ -16,10 +16,10 @@ Contents
 - Settings (environment variables)
 - Development
 
-Overview
+## Overview
 The service wraps sentence-transformers/Hugging Face embedding models behind a simple API. It can: list approved models, preload them to a local cache, compute embeddings (optionally cached in Redis), and manage model lifecycle in memory.
 
-Features
+## Features
 - FastAPI-based API with JSON or ORJSON responses
 - Embedding endpoint with batch support and Redis result caching
 - Approved model allowlist via YAML file
@@ -27,14 +27,14 @@ Features
 - Works with CPU/CUDA/ROCm PyTorch wheels (choose via extras)
 - Docker Compose setup with Redis
 
-Quickstart
+## Quickstart
 
-Prerequisites
+### Prerequisites
 - Python 3.12+ (tested with 3.14 in Docker args)
 - uv (Python package/dependency manager): https://docs.astral.sh/uv/
 - Redis (local or via Docker; docker-compose.yaml provides one)
 
-Installation (uv)
+### Installation (uv)
 1) Clone the repo and change directory into it.
 2) Choose one extra for PyTorch (CPU is default):
    - cpu (default)
@@ -64,7 +64,7 @@ uv sync --extra rocm
 uv sync --extra docker
 ```
 
-Configuration
+### Configuration
 1) Environment variables
    - Copy `dot_env.example` to `.env` and adjust values.
    - Important keys: `APP_PORT`, `API_ACCESS_KEY`, `REDIS_URL`, `HF_TOKEN`, etc. See Settings section below.
@@ -77,7 +77,7 @@ Configuration
 cp src/config/dot.models_example.yaml src/config/.models.yaml
 ```
 
-Run locally
+### Run locally
 Start the API with uvicorn:
 ```
 uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
@@ -86,7 +86,7 @@ Then open the docs:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
-Run with Docker
+### Run with Docker
 The repository includes a Dockerfile and docker-compose.yaml.
 
 Basic run (CPU by default):
@@ -95,16 +95,16 @@ docker compose up -d --build
 docker compose logs -f api
 ```
 
-Notes
+### Notes
 - The compose file starts a Redis service and the API. The API service mounts `./src` and `./data/models` into the container for live development and persisted model cache.
 - Torch extra can be controlled via build-arg `EXTRA` (defaults to `cpu`).
 - `.env` is passed into the container; set `APP_PORT` there (default 8000). The API will be available on http://localhost:8000
 - For ROCm, see `docker-compose.rocm.yaml` and related comments under `dockers/` if present on your system/hardware.
 
-API Reference (summary)
+## API Reference (summary)
 Base prefix: `/api/v1`
 
-Models
+### Models
 - `GET /models/available` → list[str] of approved model names
 - `GET /models/loaded` → list of loaded models
 - `GET /models/load?model_name=...` → load a model
@@ -112,7 +112,7 @@ Models
 - `GET /models/properties?model_name=...` → return model properties (dimensions, max_tokens, batch_size, …)
 - `GET /models/preload` → preload all available models to disk cache (requires API key; see auth dependency)
 
-Embedding
+### Embedding
 - `POST /embed/` → compute embeddings
   - Request body (`schemas/embedding.py`):
     ```json
@@ -124,11 +124,11 @@ Embedding
     ```
   - Response (`EmbeddingResponse`): vectors and metadata
 
-Cache (requires API key dependency on router or endpoint)
+### Cache (requires API key dependency on router or endpoint)
 - `POST /cache/set` with body `{ "key": "k", "value": "v" }`
 - `GET /cache/get?key=...`
 
-Settings (environment variables)
+## Settings (environment variables)
 Defined in `src/config/settings.py` (Pydantic BaseSettings). Key values include:
 - `REDIS_URL` (env: `redis_url`) default: `redis://redis:6379/0`
 - `LOG_LEVEL` (env: `log_level`) one of: DEBUG, INFO, WARNING, ERROR, CRITICAL
@@ -150,15 +150,15 @@ Defined in `src/config/settings.py` (Pydantic BaseSettings). Key values include:
 - `HF_TOKEN` (env: `hf_token`) optional; set for private models or rate limits
 - `DEFAULT_MODEL_NAMES` (env: `default_model_names`) JSON mapping, e.g. `{ "embed": "…", "rerank": "…" }`
 
-Development
+## Development
 - Code style: black, isort, and flake8 settings in `pyproject.toml` (line length 120)
 - Linting/formatting: install dev tools with `uv sync --group dev`
 - Pre-commit: `pre-commit install && pre-commit run -a`
 
-Testing
+### Testing
 - There is an example HTTP test file: `tests/test_main.http` you can run with IDE HTTP client or REST tools.
 
-Project Layout
+### Project Layout
 ```
 ai-rag-helper/
 ├─ src/
@@ -186,5 +186,5 @@ ai-rag-helper/
 └─ uv.lock
 ```
 
-License
+## License
 This repository’s license is not specified in this README. If you intend to open-source it, consider adding a LICENSE file.
