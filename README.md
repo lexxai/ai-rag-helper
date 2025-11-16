@@ -90,6 +90,9 @@ uv sync --extra rocm
 
 # No torch  (use Docker instead with 'rocm-pytorch' image)
 uv sync --extra docker
+
+# Install monitoring packages like Prometheus
+uv sync --extra monitoring
 ```
 
 ### Configuration
@@ -106,11 +109,6 @@ cp src/config/dot.models_example.yaml src/config/.models.yaml
 ```
 
 ### Run locally
-Start the API 
-```
-uv run fastapi run
-```
-
 
 Start the API with uvicorn:
 ```
