@@ -20,8 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config.settings import settings
 from config.swagger import swagger_params
+from config.logger import setup_root_logger, get_logger
 from lifespan import lifespan
-from logger_config import setup_root_logger, get_logger
 from routers import cache, models, embedding, rerank
 
 # Setup root logger for the application

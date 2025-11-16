@@ -16,7 +16,7 @@ from config.models_list_config import APPROVED_MODELS, models_list_config
 from config.settings import settings
 from constants import GpuTool, GpuDevice, GpuToolSMI, BatchSize
 from events import EventBus
-from logger_config import get_logger
+from config.logger import get_logger
 from utils import detect_gpu_tool, get_app_memory_usage
 
 logger = get_logger(__name__)

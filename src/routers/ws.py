@@ -3,7 +3,7 @@ from asyncio import sleep
 from fastapi import APIRouter
 from starlette.websockets import WebSocket
 
-from logger_config import get_logger
+from config.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -17,7 +17,7 @@ async def ws_models(ws: WebSocket):
     try:
         while True:
             await sleep(10)
-    except:
+    except Exception:
         ...
     finally:
 

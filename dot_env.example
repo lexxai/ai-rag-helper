@@ -9,6 +9,7 @@
 # APP_NAME=AI RAG Helper
 # APP_VERSION=0.0.1
 # DEBUG=false
+# PORT=8000
 
 ## API Configuration
 # API_PREFIX=/api/v1

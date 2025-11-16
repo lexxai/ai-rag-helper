@@ -4,7 +4,7 @@ from config.settings import settings
 from depends.databases import get_redis_session
 from depends.model_manager import get_model_manager
 from handlers.ebbeding import handler_embedding_cache_per_item
-from logger_config import get_logger
+from config.logger import get_logger
 from model_manager import ModelManager
 from schemas.embedding import EmbeddingRequest, EmbeddingResponse
 

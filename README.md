@@ -72,6 +72,10 @@ Sync dependencies:
 ```
 uv sync
 ```
+For dev dependencies:
+```
+uv sync --dev
+```
 
 To switch extras explicitly:
 ```
@@ -102,26 +106,58 @@ cp src/config/dot.models_example.yaml src/config/.models.yaml
 ```
 
 ### Run locally
+Start the API 
+```
+uv run fastapi run
+```
+
+
 Start the API with uvicorn:
 ```
-uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn src.main:app --host 0.0.0.0 --port 8000
 ```
 Then open the docs:
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
 ### Run with Docker
-The repository includes a Dockerfile and docker-compose.yaml.
+The repository includes a `Dockerfile` and `docker-compose.yaml`.
 
-Basic run (CPU by default):
+#### Basic run (CPU by default):
 ```
 docker compose up -d --build && docker compose logs -f api
 ```
 
-Basic build and run with extra parameters:
+#### Basic build and run with extra parameters:
 ```
 docker compose build --build-arg EXTRA=cu128 api && docker compose up -d  && docker compose logs -f api
 ```
+#### Basic build and run with additional parameters by use .env file:
+- For CUDA 12.8:
+    ```dotenv
+    EXTRA=cu128
+    ```
+
+- For `rocm-pytorch` docker image:
+    ```dotenv
+    EXTRA=docker
+    REPO_BUILDER=rocm/pytorch:latest
+    ```
+
+  Can use `docker-compose.rocm.yaml` with predefined `ROCM_VERSION` as `docker compose -f docker-compose.rocm.yaml ...` command.
+
+
+- For different Python version:
+    ```dotenv
+    PYTHON_VERSION=3.12
+    ```
+
+Then run the general run command:
+```bash
+docker compose up -d --build && docker compose logs -f api
+```
+
+
 
 ### Notes
 - The compose file starts a Redis service and the API. The API service mounts `./src` and `./data/models` into the container for live development and persisted model cache.

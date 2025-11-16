@@ -10,7 +10,7 @@ except ImportError:
 from redis.asyncio.client import Redis
 
 from config.settings import settings
-from logger_config import get_logger
+from config.logger import get_logger
 from model_manager import ModelManager
 
 logger = get_logger(__name__)

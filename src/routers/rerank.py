@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from depends.databases import get_redis_session
 from depends.model_manager import get_model_manager
 from handlers.rerank import handler_rerank
-from logger_config import get_logger
+from config.logger import get_logger
 from model_manager import ModelManager
 from schemas.rerank import RerankRequest, RerankResponse
 

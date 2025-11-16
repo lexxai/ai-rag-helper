@@ -3,7 +3,7 @@ from redis.asyncio import Redis
 
 from depends.databases import get_redis_session
 from depends.auth import check_api_key
-from logger_config import get_logger
+from config.logger import get_logger
 
 logger = get_logger(__name__)
 

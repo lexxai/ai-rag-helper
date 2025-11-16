@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
-from logger_config import get_logger
+from config.logger import get_logger
 
 logger = get_logger(__name__)
 

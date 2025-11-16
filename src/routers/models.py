@@ -12,7 +12,7 @@ from handlers.models import (
     handler_preload_models,
     handler_list_available_types,
 )
-from logger_config import get_logger
+from config.logger import get_logger
 from model_manager import ModelManager
 from schemas.models import ModelLoadResponse, ModelListItems
 
