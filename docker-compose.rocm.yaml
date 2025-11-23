@@ -22,7 +22,7 @@ services:
         UV_PYTHON: ${UV_PYTHON:-}
         APP_PORT: ${APP_PORT:-8000}
     volumes:
-      - ./src:/app/src
+#      - ./src:/app/src
       - ./data/models:/app/data/models
       - uv_cache:/root/.cache/uv
 #      - models:/app/data/models

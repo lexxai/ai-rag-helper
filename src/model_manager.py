@@ -106,6 +106,17 @@ class ModelInstance:
         except Exception as e:
             logger.error(f"Error unloading {self.model_name}: {e}")
 
+    @classmethod
+    def get_gpu_memory_usage(cls):
+        if cls.get_device() == GpuDevice.CUDA:
+            import torch
+
+            used = torch.cuda.memory_reserved() / 1e9
+            total = torch.cuda.get_device_properties(0).total_memory / 1e9
+        else:
+            used, total = 0, 0
+        return used, total
+
 
 class ModelManager:
     def __init__(self, timeout: int = None, model_type: str = None):
@@ -225,7 +236,7 @@ class ModelManager:
             return True
         return False
 
-    async def list_loaded(self):
+    async def list_loaded(self) -> list[dict]:
         data = []
         for model_name, inst in self.models.items():
             model_type, model_name_strip = self.decode_model_name(model_name)
